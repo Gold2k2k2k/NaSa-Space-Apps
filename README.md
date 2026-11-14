@@ -30,6 +30,25 @@ Built on the **GreenTrace "Field Instrument"** architecture for the **2026 NASA 
 
 ## What You Can Try in 2 Minutes
 
+First create an isolated **Python 3.11** environment and install the declared
+dependencies. No NASA API key is required. On Windows PowerShell:
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
+.\.venv\Scripts\python.exe run.py
+```
+
+On macOS/Linux, use `python3 -m venv .venv`, then
+`.venv/bin/python -m pip install -r requirements-dev.txt` and
+`.venv/bin/python run.py`. Production-only installs can use `requirements.txt`;
+the development file also installs Playwright for browser verification.
+The pinned direct dependencies were tested with Python 3.11 on November 14, 2026.
+
+In the commands below, `python` means this virtual environment's interpreter;
+use its full path above or activate the environment first. The browser interface
+opens at [localhost:8000](http://localhost:8000).
+
 1. **Re-check all 7 claims offline in one command:**
    ```bash
    python judge.py
