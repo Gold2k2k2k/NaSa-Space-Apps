@@ -72,6 +72,21 @@ class TestMeasurementSemantics(unittest.TestCase):
         self.assertEqual(modis["confidence_weight"], 0.8)
         self.assertEqual(viirs["confidence_weight"], 0.8)
 
+    def test_nominal_footprints_are_labeled_as_defaults(self):
+        missing = normalize_hotspot_row(detection())
+        supplied = normalize_hotspot_row(detection(scan=1.1, track=1.2))
+        self.assertTrue(missing.get("scan_is_missing"))
+        self.assertTrue(missing.get("track_is_missing"))
+        self.assertFalse(supplied.get("scan_is_missing", True))
+        self.assertFalse(supplied.get("track_is_missing", True))
+        aoi = parse_custom_aoi({"lat": .004, "lon": .004, "radius_km": 5})
+        result = harmonize_records([detection()], aoi)
+        self.assertEqual(result["hotspots"][0].get("footprint_basis"), "contains_nominal_defaults")
+
+    def test_nonobject_rows_are_controlled_validation_errors(self):
+        with self.assertRaises(ValueError):
+            normalize_hotspot_row(None)
+
 
 class TestHarmonizationSemantics(unittest.TestCase):
     def setUp(self) -> None:

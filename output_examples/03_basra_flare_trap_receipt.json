@@ -1,6 +1,6 @@
 {
   "receipt_version": "firetrace-receipt-v2",
-  "run_id": "ft-0378b7e846e6dc57561afe73",
+  "run_id": "ft-6d920c0f65d11659e92d218f",
   "rules_version": "2026-11-14.2",
   "rules_sha256": "1ebcf5183104a3fec7a8b87ca818318cc083ecb1a33b444d5ddcf208d256af41",
   "aoi": {
@@ -13,7 +13,7 @@
     "radius_km": 68.0,
     "area_km2": 18454.229463,
     "peak_season": "Year-round static emitters",
-    "description": "Scientific trap case: >75% of raw thermal detections originate from stationary oil/gas flares (FIRMS type=2, persistent 12 months/yr at identical 1 km cells). FireTrace's Evaluator flags static flare dominance as UNVERIFIABLE for wildfire trend inference unless explicitly separated.",
+    "description": "Generated static-land-source trap dominated by supplied type 2. Demonstrates non-vegetation filtering; type 2 does not itself prove gas flaring.",
     "polygon": [
       [
         46.99141,
@@ -2048,7 +2048,9 @@
         "confidence": 0,
         "daynight": 0,
         "acq_time": 0,
-        "firms_type": 0
+        "firms_type": 0,
+        "scan": 0,
+        "track": 0
       }
     },
     "exclude_static_flares": true,
@@ -12180,13 +12182,13 @@
     "invalid_rows": 0,
     "modis_rows": 8743,
     "viirs_rows": 8219,
-    "normalized_rows_sha256": "158a78399fc73b68e30e2d77f571977f6e39f11682d820e9deee591cd9bc736f"
+    "normalized_rows_sha256": "1e31b69858337b9a5be7182d82e14609eb479273eef8026a5cde380378832180"
   },
   "persistent_cells_count": 10,
   "verification_scope": "Unsigned reproducibility and internal evidence consistency; not source authentication.",
   "reference_time": "2026-11-14T00:00:00Z",
   "calculation_version": "firetrace-demo-v2",
-  "calculation_sha256": "0caa3707502db3cde7dca8082eb99533d55b0ab3146fe56d20c154a8a330f47d",
+  "calculation_sha256": "d6ee76db93396a64f754e889e15e77f9c863a27d72276fb2e2c353954b9b41c5",
   "provenance": {
     "source_kind": "generated_demo",
     "source_records_sha256": "8a53b494237d53a69e19a9b6ac3cf580607bc1013d024161186fdfef42ef6146",
@@ -12963,5 +12965,5 @@
     ],
     "note": "Approximate modeled opportunities from nominal solar times, schematic ground-track phase and spherical viewing geometry. No ephemerides, cloud screening, actual instrument scheduling or operational accuracy are supplied. Day/night labels are nominal branches, not computed local illumination. Historical 50-minute NOAA-21/20 spacing is schematic; known source end dates are applied."
   },
-  "receipt_sha256": "5f480625fa2f20320737f0a016b49b1d987255749e987941aecf15e988c688e2"
+  "receipt_sha256": "0c23d99032cc636010760294af3fbd2b0fd87aed0f543d031241e46744525956"
 }

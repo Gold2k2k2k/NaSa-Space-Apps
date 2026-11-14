@@ -60,7 +60,7 @@
             <details class="geometry-input"><summary>Paste GeoJSON · keyboard alternative to drawing</summary><label for="geojson-input" class="small">Point, Polygon, MultiPolygon or FeatureCollection</label><textarea id="geojson-input" rows="5" spellcheck="false" placeholder='{"type":"Polygon","coordinates":[…]}'></textarea><button type="button" class="btn" id="btn-geojson">Analyze this geometry</button></details>
           </div>
         </details>
-        <button type="button" class="btn" id="btn-upload-trigger">Upload FIRMS CSV</button>
+        <div class="csv-drop-zone" id="csv-drop-zone"><button type="button" class="btn" id="btn-upload-trigger">Upload FIRMS CSV</button><span class="small muted">or drop one .csv file here</span></div>
         <input type="file" id="csv-file-input" accept=".csv,text/csv" hidden>
         <label class="audience-picker">Audience<select id="persona-select"></select></label>
       </div>

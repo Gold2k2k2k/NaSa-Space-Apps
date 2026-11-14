@@ -1,6 +1,6 @@
 {
   "receipt_version": "firetrace-receipt-v2",
-  "run_id": "ft-f55ad12c37c014598f8e8f84",
+  "run_id": "ft-25a0d915aa1811ae8919f865",
   "rules_version": "2026-11-14.2",
   "rules_sha256": "1ebcf5183104a3fec7a8b87ca818318cc083ecb1a33b444d5ddcf208d256af41",
   "aoi": {
@@ -13,7 +13,7 @@
     "radius_km": 110.0,
     "area_km2": 48289.12366,
     "peak_season": "Aug–Oct",
-    "description": "Southern Amazon deforestation and drought frontier. Severe late-dry-season fires in 2024 and September 2026 exceed the 2001–2020 historical 95th percentile.",
+    "description": "Generated Amazon-like dry-season anomaly fixture. Scripted 2024 and September 2026 activity; not observed regional history.",
     "polygon": [
       [
         -56.20839,
@@ -2047,7 +2047,9 @@
         "confidence": 0,
         "daynight": 0,
         "acq_time": 0,
-        "firms_type": 0
+        "firms_type": 0,
+        "scan": 0,
+        "track": 0
       }
     },
     "exclude_static_flares": true,
@@ -12189,13 +12191,13 @@
     "invalid_rows": 0,
     "modis_rows": 2801,
     "viirs_rows": 4687,
-    "normalized_rows_sha256": "5588651943b0da47f989ab19e278e719d8038c908d166ce1533db0e9ae8a6e34"
+    "normalized_rows_sha256": "bec9297ebd3a6208d201d0154cc70a1de1c743ea6920b6ee9542e96f0f841f6e"
   },
   "persistent_cells_count": 0,
   "verification_scope": "Unsigned reproducibility and internal evidence consistency; not source authentication.",
   "reference_time": "2026-11-14T00:00:00Z",
   "calculation_version": "firetrace-demo-v2",
-  "calculation_sha256": "0caa3707502db3cde7dca8082eb99533d55b0ab3146fe56d20c154a8a330f47d",
+  "calculation_sha256": "d6ee76db93396a64f754e889e15e77f9c863a27d72276fb2e2c353954b9b41c5",
   "provenance": {
     "source_kind": "generated_demo",
     "source_records_sha256": "0401772b8768debcdb75986fd9413f3fcd5df3f44fb4cd20b4ed917de0163ea6",
@@ -12934,5 +12936,5 @@
     ],
     "note": "Approximate modeled opportunities from nominal solar times, schematic ground-track phase and spherical viewing geometry. No ephemerides, cloud screening, actual instrument scheduling or operational accuracy are supplied. Day/night labels are nominal branches, not computed local illumination. Historical 50-minute NOAA-21/20 spacing is schematic; known source end dates are applied."
   },
-  "receipt_sha256": "8b62c843a6b3bffea479d44c33eb240122e43c88ff8ccf6c8f0143f89aa12a89"
+  "receipt_sha256": "a5ce4285ea0fb7084303d4de57e7962c2e9cdfb86a61a23bf1b94549f872238f"
 }

@@ -54,7 +54,7 @@ def export_hotspots_csv(run_data, limit=None):
         "hotspot_id", "cell_id", "acq_date", "year", "month", "dekad", "lat", "lon",
         "daynight", "temporal_precision", "window_start_utc", "window_end_utc", "observation_dates",
         "sensor_family", "satellites", "mir_bt_k", "tir_bt_k", "confidence_class", "confidence_weight",
-        "effective_area_km2", "raw_detections", "unique_observations", "duplicate_observation_rows",
+        "effective_area_km2", "footprint_basis", "raw_detections", "unique_observations", "duplicate_observation_rows",
         "raw_modis", "raw_viirs", "overpass_dedup_factor", "modis_satellite_factor", "viirs_satellite_factor",
         "hhe", "hfre_mw", "frp_is_missing", "fire_category", "source_type", "classification_basis",
         "is_persistent_inferred", "include_in_calendar"]

@@ -33,8 +33,9 @@ The ZIP includes complete exports, accepted source rows, full analysis inputs,
 matching app sources, `verify.py`, method documentation and a raw-file SHA-256
 manifest. Extract it and run `python -S -B verify.py receipt.json` without
 third-party packages. Replaying the whole analysis additionally needs the
-project's declared runtime dependencies. Source rows are not original CSV bytes
-and do not include rejected rows; ingestion metadata reports those rejections.
+project's declared runtime dependencies. Source rows are not original CSV bytes.
+CSV ingestion retains only accepted rows and reports rejections in metadata;
+direct engine input can retain invalid rows, counted separately by normalization.
 
 Version 1 receipts remain readable with a narrower verification scope. They did
 not contain full calendar cells or independent input summaries, so those missing

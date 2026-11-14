@@ -54,8 +54,7 @@ AOIS: dict[str, dict[str, Any]] = {
         "peak_season": "Aug–Oct",
         "expected_verdict": "CRITICAL_ANOMALY",
         "description": (
-            "Southern Amazon deforestation and drought frontier. Severe late-dry-season fires "
-            "in 2024 and September 2026 exceed the 2001–2020 historical 95th percentile."
+            'Generated Amazon-like dry-season anomaly fixture. Scripted 2024 and September 2026 activity; not observed regional history.'
         ),
         "monthly_weights": [0.06, 0.05, 0.07, 0.10, 0.18, 0.35, 0.65, 1.35, 1.85, 1.10, 0.28, 0.10],
         "base_scale": 14.0,
@@ -87,9 +86,7 @@ AOIS: dict[str, dict[str, Any]] = {
         "peak_season": "Feb–Apr",
         "expected_verdict": "ELEVATED_WATCH",
         "description": (
-            "Intensive smallholder crop-residue burning (maize, rice stubble). Unharmonized raw counts "
-            "jump +380% after VIIRS launch in 2012 because 375 m pixels detect small agricultural burns "
-            "that 1 km MODIS missed; harmonization bridges the discontinuity and isolates true elevated activity."
+            'Generated small-fire sensor-transition fixture with scripted March 2026 elevation. No attribution to actual agricultural burning.'
         ),
         "monthly_weights": [0.35, 0.95, 1.85, 1.40, 0.30, 0.08, 0.05, 0.05, 0.07, 0.12, 0.22, 0.30],
         "base_scale": 12.0,
@@ -119,8 +116,7 @@ AOIS: dict[str, dict[str, Any]] = {
         "peak_season": "Jul–Oct",
         "expected_verdict": "CRITICAL_ANOMALY",
         "description": (
-            "High-intensity western North America conifer wildfire regime featuring extreme nighttime "
-            "radiative power (FRP) persistence during August 2026 and historic megafire years (2020, 2021)."
+            'Generated conifer-region seasonal anomaly with nighttime detections. It does not establish crown fire, continuous burning or real events.'
         ),
         "monthly_weights": [0.04, 0.04, 0.06, 0.10, 0.22, 0.45, 0.95, 1.45, 1.25, 0.55, 0.14, 0.05],
         "base_scale": 8.0,
@@ -150,8 +146,7 @@ AOIS: dict[str, dict[str, Any]] = {
         "peak_season": "Nov–Feb",
         "expected_verdict": "NOMINAL_REGIME",
         "description": (
-            "Southern Hemisphere summer fire calendar. Captures the catastrophic 2019–2020 Black Summer "
-            "megafires in the historical record while January 2026 remains within normal climatological bounds."
+            'Generated Southern Hemisphere calendar with scripted 2019/2020 peaks and near-reference January 2026. Not a reconstruction of Black Summer.'
         ),
         "monthly_weights": [1.30, 0.95, 0.35, 0.18, 0.12, 0.08, 0.07, 0.12, 0.28, 0.65, 1.15, 1.45],
         "base_scale": 8.5,
@@ -183,8 +178,7 @@ AOIS: dict[str, dict[str, Any]] = {
         "peak_season": "May–Aug",
         "expected_verdict": "NOMINAL_REGIME",
         "description": (
-            "Fire-adapted African Miombo ecosystem with stable periodic dry-season burning from May to August. "
-            "Demonstrates an ecological fire regime tracking near its 20-year historical median."
+            'Generated seasonal savanna-like fixture near its reference activity. No ecological outcome or actual historical regime is established.'
         ),
         "monthly_weights": [0.05, 0.06, 0.12, 0.35, 1.10, 1.75, 1.95, 1.65, 0.75, 0.22, 0.08, 0.05],
         "base_scale": 15.0,
@@ -211,9 +205,7 @@ AOIS: dict[str, dict[str, Any]] = {
         "peak_season": "Year-round static emitters",
         "expected_verdict": "UNVERIFIABLE",
         "description": (
-            "Scientific trap case: >75% of raw thermal detections originate from stationary oil/gas flares "
-            "(FIRMS type=2, persistent 12 months/yr at identical 1 km cells). FireTrace's Evaluator flags "
-            "static flare dominance as UNVERIFIABLE for wildfire trend inference unless explicitly separated."
+            'Generated static-land-source trap dominated by supplied type 2. Demonstrates non-vegetation filtering; type 2 does not itself prove gas flaring.'
         ),
         "monthly_weights": [0.10, 0.10, 0.12, 0.14, 0.20, 0.30, 0.35, 0.38, 0.30, 0.18, 0.12, 0.10],
         "base_scale": 3.0,

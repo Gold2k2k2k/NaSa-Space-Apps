@@ -2,12 +2,14 @@
 
     python judge.py
 
-Runs 7 deterministic scientific & engineering checks offline, writes logs/judge/report.md,
-and prints PASS/FAIL per claim. Exit 0 if all 7 pass, 1 otherwise.
+Runs 7 generated-demo integration checks offline, writes logs/judge/report.md,
+and prints PASS/FAIL. These checks do not establish real-world scientific accuracy.
 """
 from __future__ import annotations
 
 import copy
+import csv
+import io
 import json
 import subprocess
 import sys
@@ -20,7 +22,8 @@ from app.exports import (
     export_hotspots_csv,
     export_hotspots_geojson,
 )
-from app.receipt import build_receipt
+from app.receipt import build_receipt, package_zip
+from verify import check_receipt
 
 ROOT = Path(__file__).resolve().parent
 OUT_DIR = ROOT / "logs" / "judge"
@@ -31,7 +34,10 @@ def check_seal_determinism() -> tuple[bool, str]:
     r2 = run_investigation({"aoi_id": "AOI-AMZ"})
     ok = (
         r1["verdict"] == "CRITICAL_ANOMALY"
+        and r1["run_id"] == r2["run_id"]
         and r1["verdict_sha256"] == r2["verdict_sha256"]
+        and build_receipt(r1) == build_receipt(r2)
+        and package_zip(r1) == package_zip(r2)
     )
     return ok, f"AOI-AMZ run twice -> {r1['verdict']}, identical seal {r1['verdict_sha256'][:16]}..."
 
@@ -41,8 +47,11 @@ def check_step_jump_removal() -> tuple[bool, str]:
     audit = r["sensor_calibration_audit"]
     ok = (
         audit["raw_step_jump_2012_pct"] > 100.0
-        and audit["bias_reduction_pct"] >= 80.0
-        and audit["bridge_r2"] >= 0.90
+        and audit["bias_reduction_pct"] > 0.0
+        and audit["calibration_valid"]
+        and audit["bridge_rmse"] >= 0.0
+        and audit["bridge_efficiency"] is not None
+        and {row["transition_year"] for row in audit["transition_audits"]} == {2012, 2018}
     )
     return ok, (
         f"AOI-MEK 2012 jump {audit['raw_step_jump_2012_pct']:+.1f}% -> "
@@ -57,7 +66,7 @@ def check_overpass_deduplication() -> tuple[bool, str]:
     ok = audit["overpass_duplicates_removed"] > 500 and audit["total_harmonized_events"] < audit["total_raw_detections"]
     return ok, (
         f"Collapsed {audit['total_raw_detections']:,} raw detections into {audit['total_harmonized_events']:,} "
-        f"1 km cell-pass events ({audit['overpass_duplicates_removed']:,} afternoon/sub-pixel duplicates removed)"
+        f"1 km cell-window events ({audit['overpass_duplicates_removed']:,} row-to-window reduction; not verified same-fire duplicates)"
     )
 
 
@@ -66,7 +75,7 @@ def check_flare_trap() -> tuple[bool, str]:
     unguarded = apply_what_if(guarded, "flare_guard", False)
     ok = guarded["verdict"] == "UNVERIFIABLE" and unguarded["verdict"] == "NOMINAL_REGIME"
     return ok, (
-        f"AOI-FLR ({guarded['sensor_calibration_audit']['flare_contamination_share']:.1%} static flares): "
+        f"Generated AOI-FLR ({guarded['sensor_calibration_audit']['non_vegetation_share']:.1%} supplied non-vegetation types): "
         f"guard ON -> {guarded['verdict']}; guard OFF -> {unguarded['verdict']}"
     )
 
@@ -91,8 +100,14 @@ def check_receipt_and_tamper() -> tuple[bool, str]:
 
 def check_what_if_mode_flip() -> tuple[bool, str]:
     harm = run_investigation({"aoi_id": "AOI-MEK", "mode": "harmonized"})
+    original = copy.deepcopy(harm)
     raw = apply_what_if(harm, "mode", "raw")
-    ok = harm["verdict"] == "ELEVATED_WATCH" and raw["verdict"] == "CRITICAL_ANOMALY"
+    median = apply_what_if(harm, "focus_to_median", True)
+    ok = (harm["verdict"] == "ELEVATED_WATCH" and raw["verdict"] == "CRITICAL_ANOMALY"
+          and harm == original and raw["run_id"] != harm["run_id"]
+          and median["_raw_records"] == harm["_raw_records"]
+          and median["calendar"]["focus_comparison"]["z_robust"] == 0
+          and check_receipt(build_receipt(median))["status"] == "VALID")
     return ok, f"AOI-MEK Harmonized -> {harm['verdict']} (Z={harm['calendar']['focus_comparison']['z_robust']:+.2f}); Raw -> {raw['verdict']} (Z={raw['calendar']['focus_comparison']['z_robust']:+.2f})"
 
 
@@ -103,12 +118,13 @@ def check_exports() -> tuple[bool, str]:
     gj = export_hotspots_geojson(r)
     ics = export_calendar_ics(r)
     ok = (
-        "hotspot_id,cell_id" in h_csv
-        and len(c_csv.splitlines()) >= 300
+        len(list(csv.DictReader(io.StringIO(h_csv)))) == len(r["_hotspots_all"])
+        and len(list(csv.DictReader(io.StringIO(c_csv)))) == len(r["calendar"]["cells"])
         and gj.get("type") == "FeatureCollection"
-        and len(gj.get("features", [])) > 10
+        and len(gj.get("features", [])) == len(r["_hotspots_all"]) + 1
+        and gj["features"][0]["geometry"] == r["aoi"]["geometry"]
         and "BEGIN:VCALENDAR" in ics
-        and "BEGIN:VEVENT" in ics
+        and ics.count("BEGIN:VEVENT") == len(r["passes"]["passes"]) + len(r["calendar"]["summary_records"]["peak_months"])
     )
     return ok, (
         f"Hotspots CSV ({len(h_csv.splitlines())} lines), Calendar CSV ({len(c_csv.splitlines())} lines), "
@@ -118,18 +134,19 @@ def check_exports() -> tuple[bool, str]:
 
 CHECKS = [
     ("1. Deterministic Verdict Seal", check_seal_determinism),
-    ("2. 2012 VIIRS Step-Jump Bias Removal", check_step_jump_removal),
-    ("3. Afternoon Overpass Deduplication", check_overpass_deduplication),
-    ("4. Static Gas Flare Trap Detection", check_flare_trap),
+    ("2. Generated Sensor-Transition Diagnostics", check_step_jump_removal),
+    ("3. Cell-Window Occupancy Aggregation", check_overpass_deduplication),
+    ("4. Supplied Non-Vegetation Guard", check_flare_trap),
     ("5. Offline Receipt & Tamper Detection", check_receipt_and_tamper),
-    ("6. Harmonized vs Raw Counterfactual Flip", check_what_if_mode_flip),
+    ("6. Immutable Mode and Median Experiments", check_what_if_mode_flip),
     ("7. CSV / GeoJSON / iCalendar Exports", check_exports),
 ]
 
 
 def main() -> int:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
-    lines = ["# FireTrace Judge Verification Report\n"]
+    lines = ["# FireTrace generated-demo verification\n",
+             "Fixture integration checks; not external scientific validation.\n"]
     all_ok = True
     for label, fn in CHECKS:
         ok, detail = fn()

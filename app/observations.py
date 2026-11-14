@@ -40,7 +40,7 @@ def normalize_observations(raw_records, aoi, confidence_min):
             outside += 1
             continue
         recorded.append(row)
-        for name in ("frp", "mir", "tir", "confidence", "daynight", "acq_time", "firms_type"):
+        for name in ("frp", "mir", "tir", "confidence", "daynight", "acq_time", "firms_type", "scan", "track"):
             missing[name] += bool(row.get(name + "_is_missing"))
         if CONFIDENCE_ORDER[row["confidence_class"]] < CONFIDENCE_ORDER[confidence_min]:
             filtered += 1
@@ -190,6 +190,7 @@ def summarize_window(window, inferred_cells, geometry=None):
         "confidence_class": max(rows, key=lambda r: CONFIDENCE_ORDER[r["confidence_class"]])["confidence_class"],
         "confidence_weight": max(r["confidence_weight"] for r in rows),
         "effective_area_km2": mean_known("effective_area_km2"),
+        "footprint_basis": "contains_nominal_defaults" if any(r["scan_is_missing"] or r["track_is_missing"] for r in rows) else "supplied_dimensions",
         "raw_detections": len(raw), "unique_observations": len(rows),
         "duplicate_observation_rows": len(raw) - len(rows),
         "raw_modis": sum(r["instrument"] == "MODIS" for r in raw),

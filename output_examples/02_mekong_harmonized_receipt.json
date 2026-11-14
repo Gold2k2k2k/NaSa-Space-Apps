@@ -1,6 +1,6 @@
 {
   "receipt_version": "firetrace-receipt-v2",
-  "run_id": "ft-853f613b633d7ffac4f256da",
+  "run_id": "ft-cec58d187cb61f5a150d4a80",
   "rules_version": "2026-11-14.2",
   "rules_sha256": "1ebcf5183104a3fec7a8b87ca818318cc083ecb1a33b444d5ddcf208d256af41",
   "aoi": {
@@ -13,7 +13,7 @@
     "radius_km": 105.0,
     "area_km2": 43999.128465,
     "peak_season": "Feb–Apr",
-    "description": "Intensive smallholder crop-residue burning (maize, rice stubble). Unharmonized raw counts jump +380% after VIIRS launch in 2012 because 375 m pixels detect small agricultural burns that 1 km MODIS missed; harmonization bridges the discontinuity and isolates true elevated activity.",
+    "description": "Generated small-fire sensor-transition fixture with scripted March 2026 elevation. No attribution to actual agricultural burning.",
     "polygon": [
       [
         99.45122,
@@ -2047,7 +2047,9 @@
         "confidence": 0,
         "daynight": 0,
         "acq_time": 0,
-        "firms_type": 0
+        "firms_type": 0,
+        "scan": 0,
+        "track": 0
       }
     },
     "exclude_static_flares": true,
@@ -12179,13 +12181,13 @@
     "invalid_rows": 0,
     "modis_rows": 1573,
     "viirs_rows": 5661,
-    "normalized_rows_sha256": "cb59a0a565865ede5eb82354b38975e067f0ef7089968c8a0bb8b3c56fd1e722"
+    "normalized_rows_sha256": "0803dedf4de7eae6938ea5c691857af2dbdb4893ec087aa7594bdc0d3bcf7508"
   },
   "persistent_cells_count": 0,
   "verification_scope": "Unsigned reproducibility and internal evidence consistency; not source authentication.",
   "reference_time": "2026-11-14T00:00:00Z",
   "calculation_version": "firetrace-demo-v2",
-  "calculation_sha256": "0caa3707502db3cde7dca8082eb99533d55b0ab3146fe56d20c154a8a330f47d",
+  "calculation_sha256": "d6ee76db93396a64f754e889e15e77f9c863a27d72276fb2e2c353954b9b41c5",
   "provenance": {
     "source_kind": "generated_demo",
     "source_records_sha256": "409c13fedf13b80dbcae11cc75040093ec7f5fb6b247448b24580b81a951996d",
@@ -12962,5 +12964,5 @@
     ],
     "note": "Approximate modeled opportunities from nominal solar times, schematic ground-track phase and spherical viewing geometry. No ephemerides, cloud screening, actual instrument scheduling or operational accuracy are supplied. Day/night labels are nominal branches, not computed local illumination. Historical 50-minute NOAA-21/20 spacing is schematic; known source end dates are applied."
   },
-  "receipt_sha256": "7cd9c37386cadf713b1755a6f6e14126998c0d203b56178a5dcf510ddb7e7c20"
+  "receipt_sha256": "083a2ae3b913c25ba01dae626058543918a464b04c29752d02cd06fd3c9c8999"
 }

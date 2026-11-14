@@ -1,23 +1,53 @@
-# 2026 NASA Space Apps Challenge Submission — FireTrace
+# FireTrace team demonstration
 
-- **Challenge:** Harmonization of MODIS and VIIRS Hot Spots
-- **Project:** FireTrace — Harmonized MODIS & VIIRS Burning Activity Calendar & Deterministic Regime Investigator
-- **Repository:** https://github.com/Gold2k2k2k/NaSa-Space-Apps
+FireTrace is a competition prototype about a real comparison problem: sensors
+with different resolutions, observation times and processing streams should not
+be summed as interchangeable fire counts. Its contribution is an inspectable
+comparison workflow: explicit source/coverage, a defined occupancy index,
+sensor-transition diagnostics and portable consistency evidence.
 
----
+This document positions the team's accepted brief. It does not assert compliance
+with every official competition criterion or an independently verified challenge
+year/title. Confirm the team's selected challenge and submission rules on the
+[NASA Space Apps site](https://www.spaceappschallenge.org/) before submission.
 
-## 1. Executive Summary
-Satellites have tracked active fires for over 26 years, but the historical record is split between **MODIS** (Terra & Aqua, 1000 m resolution, 2000–present) and **VIIRS** (Suomi NPP, NOAA-20, NOAA-21, 375 m resolution, 2012–present). Because a single 1 km² fire footprint triggers 5–8 sub-pixel VIIRS 375 m detections and afternoon-train satellites co-observe the same burn, naively summing raw FIRMS hotspots creates a false **+200% to +380% step jump in 2012**.
+## Five-minute walkthrough
 
-**FireTrace** harmonizes MODIS and VIIRS into a unified, sensor-agnostic unit — **Harmonized Hotspot Equivalents (HHE)** — and renders an interactive **2000–2026 Burning Activity Calendar** that empowers emergency responders, scientists, land managers, and firefighters to compare current burning activity against a 20-year historical median, separate wildfires from agricultural burns and industrial gas flares, and verify every finding offline via cryptographic receipts.
+1. Start with [README setup](../README.md). Open Calendar and point to the
+   **generated demo** source badge. Choose Mekong, March 2026. Compare its
+   harmonized label with raw mode, then use Bridge to inspect 2012/2018 changes,
+   calibration basis, RMSE and correlation separately. These are fixture results.
+2. Return to Calendar. Use arrow keys to choose a month; show coverage, the
+   same-month 2001–2020 reference, monthly/dekad profiles and complete-year trends.
+   Explain that HHE is a weighted occupancy index, not burned area or fire count.
+3. Open Audit. Set the focus metric to its historical median, show the scenario
+   label and new run identity, then restore observations. Download the receipt
+   and audit ZIP. Run `python verify.py receipt.json`; explain the unsigned scope.
+4. Upload [the invented mixed-quality sample](../app/web/static/samples/generated-mixed-quality.csv).
+   Show accepted/rejected counts and recorded-only coverage. Its short archive
+   correctly remains UNVERIFIABLE instead of inventing a historical baseline.
+5. Open Schemas, then Bench. Inspect a mapping and run the twelve generated cases.
+   Show Basra with the non-vegetation guard; type 2 means other static-land source,
+   not proof of industrial gas flaring. Show the stored schedule reference and
+   approximate label before exporting ICS.
 
-## 2. How FireTrace Meets Every Challenge Criterion
+## Evidence and limits
 
-| Challenge Requirement | FireTrace Implementation |
-|---|---|
-| **MODIS & VIIRS Harmonization** | 4-stage pipeline in `app/harmonize.py`: schema normalization (`app/schema_mapping.py`), 1 km equal-area sinusoidal clustering (`G1K_*`), afternoon-train overpass deduplication, and 2012–2024 overlap calibration ($\kappa$, reducing step bias by 89%–99% with $R^2 > 0.96$). |
-| **Burning Activity Calendar (2000–2026)** | Interactive **27-year × 12-month** heatmap matrix + **36-dekad (10-day)** intra-seasonal profile (`app/calendar_engine.py`), with live click-to-inspect and a physical **Harmonized vs. Raw** toggle switch. |
-| **Historical Median & Anomaly Comparison** | Non-parametric 2001–2020 climatology computing monthly Median, Mean, IQR (Q25–Q75), P90, P95, relative anomaly ($\Delta\%$), and robust Z-score ($Z_{\text{robust}}$). |
-| **Interactive Spatial Selection** | Draw custom polygons directly on the map, input Latitude/Longitude/Radius & Date Range, upload custom **NASA FIRMS CSV** archives, or explore 6 real-world benchmark fire regimes. |
-| **Accessible Color Ramps** | Instant switcher between **Viridis**, **Cividis** (deuteranopia/protanopia safe), **YlOrRd**, and **Okabe-Ito Diverging Anomaly**, with automatic WCAG contrast foreground text. |
-| **Downloadable CSV, GeoJSON, ICS & Receipt** | One-click exports for Harmonized Hotspots CSV, 27-Year Calendar Matrix CSV, Spatial GeoJSON, RFC 5545 `.ics` (upcoming Terra/Aqua/S-NPP/NOAA-20/21 passes + critical fire windows), and offline-verifiable `receipt.json` + Audit ZIP. |
+Run `python smoke_test.py` and `python judge.py` for integration and seven demo
+checks; the latter writes current measured fixture results to
+`logs/judge/report.md`. Run the full suite and artifact checks from README for
+numerical, geometry, immutable-state, verifier, export and real-HTTP browser QA.
+The [visual audit](verification/visual-audit.md) describes desktop/mobile review.
+
+Presets are invented, geographically named scenarios, not NASA observations.
+User-supplied CSVs are not authenticated and do not establish complete coverage.
+The bridge and source-pattern labels are demonstration heuristics without held-out
+observational validation. Passes have no ephemerides, cloud or instrument-status
+inputs. Verdicts are not emergency guidance. Accessibility has keyboard, contrast
+and reduced-motion checks, but no claim of full WCAG or screen-reader certification.
+
+Next scientific work requires curated real observations with coverage metadata,
+held-out cross-sensor validation and independent ecological evidence. Operational
+passes require propagated ephemerides and validated acquisition schedules. A
+public multi-user deployment also requires persistent storage and access control.
+See [methods and primary references](SCIENCE.md) and [receipt limits](RECEIPTS.md).

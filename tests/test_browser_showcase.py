@@ -264,6 +264,35 @@ class TestBrowserShowcase(unittest.TestCase):
         self.assertIsNone(restored["counterfactual"])
         self.assertEqual(restored["calendar"]["focus_comparison"]["value"], drawn["calendar"]["focus_comparison"]["value"])
 
+    def test_35_drop_upload_escape_and_relational_form_validation(self):
+        self.open()
+        self.assertEqual(self.page.locator("#csv-drop-zone").count(), 1)
+        transfer = self.page.evaluate_handle("""text => {
+            const transfer = new DataTransfer();
+            transfer.items.add(new File([text], 'dropped.csv', {type: 'text/csv'}));
+            return transfer;
+        }""", CSV)
+        uploaded = self.action(lambda: self.page.locator("#csv-drop-zone").dispatch_event(
+            "drop", {"dataTransfer": transfer}), "/api/upload-csv")
+        self.assertEqual(uploaded["provenance"]["source_kind"], "uploaded_csv")
+        self.page.locator("#btn-draw-mode").click()
+        self.page.keyboard.press("Escape")
+        self.assertEqual(self.page.locator("#btn-draw-mode").get_attribute("aria-pressed"), "false")
+        self.page.locator("#selection-panel > summary").click()
+        self.page.locator("#in-y0").fill("2026")
+        self.page.locator("#in-y1").fill("2025")
+        posted = []
+        self.page.on("request", lambda request: posted.append(request.url) if request.method == "POST" else None)
+        self.page.locator("#btn-analyze").click()
+        self.page.wait_for_function("!document.getElementById('global-error').hidden")
+        self.assertIn("start", self.page.locator("#error-message").inner_text().lower())
+        self.assertEqual(posted, [])
+        self.page.locator("#in-y0").fill("2020")
+        self.page.locator("#in-fy").fill("2026")
+        self.page.locator("#btn-analyze").click()
+        self.assertIn("focus", self.page.locator("#error-message").inner_text().lower())
+        self.assertEqual(posted, [])
+
     def test_40_late_result_cannot_replace_a_newer_selection(self):
         self.open()
         self.page.evaluate("""() => {

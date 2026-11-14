@@ -87,6 +87,22 @@ function formOptions() {
   };
 }
 
+function validatedFormOptions() {
+  if (!$('query-form').reportValidity()) return null;
+  const options = formOptions();
+  if (options.year_start > options.year_end) {
+    showError('The start year must be no later than the last year.');
+    $('in-y0').focus();
+    return null;
+  }
+  if (options.focus_year < options.year_start || options.focus_year > options.year_end) {
+    showError('The focus year must be within the selected first and last years.');
+    $('in-fy').focus();
+    return null;
+  }
+  return options;
+}
+
 function syncForm(run) {
   const aoi = run.aoi, options = run.options;
   for (const [id, value] of Object.entries({
@@ -289,6 +305,14 @@ async function runBench() {
 
 function wireEvents() {
   window.addEventListener("hashchange", route);
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && state.draw.active) {
+      state.draw.active = false;
+      state.draw.points = [];
+      renderMap(state.run, state.draw, addDrawPoint);
+      $('btn-draw-mode').focus();
+    }
+  });
   document.addEventListener("toggle", syncScrollHints, true);
   let resizeTimer;
   window.addEventListener("resize", () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(renderCurrent, 120); });
@@ -307,16 +331,38 @@ function wireEvents() {
   $("btn-point-mode").addEventListener("click", markCoordinates);
   $("query-form").addEventListener("submit", (event) => {
     event.preventDefault();
-    const options = formOptions();
+    const options = validatedFormOptions();
+    if (!options) return;
     if (state.run && !state.geometryDirty) runWhatIf("options", options);
     else analyze({ ...options, lat: Number($("in-lat").value), lon: Number($("in-lon").value), radius_km: Number($("in-radius").value), ...($("in-name").value.trim() ? { name: $("in-name").value.trim() } : {}) });
   });
   $("btn-geojson").addEventListener("click", () => {
-    try { analyze({ ...formOptions(), geojson: JSON.parse($("geojson-input").value) }); }
+    const options = validatedFormOptions();
+    if (!options) return;
+    try { analyze({ ...options, geojson: JSON.parse($("geojson-input").value) }); }
     catch { showError("GeoJSON must be valid JSON. Supported: Point, Polygon, MultiPolygon or FeatureCollection."); }
   });
   $("btn-upload-trigger").addEventListener("click", () => $("csv-file-input").click());
   $("csv-file-input").addEventListener("change", (event) => { upload(event.target.files?.[0]); event.target.value = ""; });
+  const dropZone = $('csv-drop-zone');
+  dropZone.addEventListener('dragover', (event) => {
+    event.preventDefault();
+    if (state.setup) { event.dataTransfer.dropEffect = 'copy'; dropZone.classList.add('is-over'); }
+  });
+  dropZone.addEventListener('dragleave', (event) => {
+    if (!dropZone.contains(event.relatedTarget)) dropZone.classList.remove('is-over');
+  });
+  dropZone.addEventListener('drop', (event) => {
+    event.preventDefault();
+    dropZone.classList.remove('is-over');
+    if (!state.setup) return;
+    const files = event.dataTransfer.files;
+    if (files.length !== 1 || !files[0].name.toLowerCase().endsWith('.csv')) {
+      showError('Drop one .csv file, or use the Upload FIRMS CSV button.');
+      return;
+    }
+    upload(files[0]);
+  });
   $("btn-draw-mode").addEventListener("click", () => {
     state.draw.active = !state.draw.active; state.draw.points = [];
     renderMap(state.run, state.draw, addDrawPoint);
@@ -324,8 +370,10 @@ function wireEvents() {
   $("btn-draw-undo").addEventListener("click", () => { state.draw.points.pop(); renderMap(state.run, state.draw, addDrawPoint); });
   $("btn-draw-apply").addEventListener("click", () => {
     if (state.draw.points.length < 3) return;
+    const options = validatedFormOptions();
+    if (!options) return;
     const ring = [...state.draw.points, state.draw.points[0]];
-    analyze({ ...formOptions(), geojson: { type: "Polygon", coordinates: [ring] } });
+    analyze({ ...options, geojson: { type: "Polygon", coordinates: [ring] } });
   });
   $("btn-load-receipt").addEventListener("click", inspectReceipt);
   $("btn-load-manifesto").addEventListener("click", loadManifesto);

@@ -33,15 +33,29 @@ def main() -> int:
         return f"status={v['status']} queries={v['queries_checked']}"
 
     def step_http() -> str:
-        client = TestClient(app)
-        r = client.get("/health")
-        assert r.status_code == 200
-        b = client.post("/api/bench")
-        assert b.status_code == 200 and b.json()["all_pass"]
-        return f"bench={b.json()['passed']}/{b.json()['total']}"
+        with TestClient(app) as client:
+            assert client.get("/health").status_code == 200
+            response = client.post("/api/analyze", json={"aoi_id": "AOI-MEK"})
+            assert response.status_code == 200
+            snapshot = response.json()
+            run_id = snapshot["run_id"]
+            assert client.get(f"/runs/{run_id}").json() == snapshot
+            receipt = client.get(f"/runs/{run_id}/receipt").json()
+            assert check_receipt(receipt)["status"] == "VALID"
+            schedule = client.get("/api/passes", params={"run_id": run_id}).json()
+            assert schedule == {"run_id": run_id, "aoi_id": snapshot["aoi"]["aoi_id"], **snapshot["passes"]}, "Stored schedule differs"
+            assert client.post("/api/analyze", json={"focus_month": 13}).status_code == 422
+            sample = "latitude,longitude,acq_date,satellite,confidence\n10,106,2026-07-01,N20,h\n"
+            upload = client.post("/api/upload-csv", files={"file": ("sample.csv", sample, "text/csv")})
+            assert upload.status_code == 200, upload.text
+            assert upload.json()["verdict"] == "UNVERIFIABLE"
+            assert upload.json()["calendar"]["focus_comparison"]["coverage_status"] == "records_only"
+            b = client.post("/api/bench")
+            assert b.status_code == 200 and b.json()["all_pass"]
+            return f"snapshot, receipt, stored passes, validation, CSV coverage; bench={b.json()['passed']}/{b.json()['total']}"
 
     check("Engine & Harmonization Pipeline", step_engine)
-    check("Cryptographic Receipt Offline Verifier", step_receipt)
+    check("Unsigned Receipt Consistency Verifier", step_receipt)
     check("HTTP API & 12-Case Benchmark", step_http)
 
     for status, name, detail in results:

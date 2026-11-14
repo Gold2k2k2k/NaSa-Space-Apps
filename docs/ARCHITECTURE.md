@@ -1,44 +1,58 @@
-# FireTrace Architecture — Harmonized MODIS & VIIRS Field Instrument
+# FireTrace architecture
 
-## 1. System Overview
-
-**FireTrace** solves the core Earth Observation problem of the **2026 NASA Space Apps Challenge (Harmonization of MODIS and VIIRS Hot Spots)**: MODIS (Terra 2000+, Aqua 2002+, 1000 m resolution) and VIIRS (Suomi NPP 2012+, NOAA-20 2018+, NOAA-21 2023+, 375 m resolution) cannot be directly summed or compared without introducing massive artificial step jumps in 2012 and 2018.
+A single Python 3.11/FastAPI process serves a zero-build, offline-capable dashboard
+and deterministic analysis pipeline. The historical five-agent names describe
+ordinary code stages, not LLM calls or autonomous network agents.
 
 ```mermaid
 flowchart LR
-    U["User AOI (Preset / Lat-Lon / Drawn Polygon / FIRMS CSV)"] --> EX
-    subgraph Agents["Five-Agent Pipeline (app/agents.py)"]
-        EX["1. Extractor\n(Schema & AOI)"] --> PL["2. Planner\n(Queries Q0-Q8)"]
-        PL --> IN["3. Investigator\n(Harmonize + Calendar)"]
-        IN --> EV["4. Evaluator\n(Refutations R1-R4)"]
-        EV --> WR["5. Writer\n(Persona Briefing)"]
-    end
-    SM[("app/schema_mapping.py\n3 FIRMS Source Schemas\n-> 4 Target Schemas")] --> EX
-    IN --> HM[("app/harmonize.py\n1 km Sinusoidal Grid\nOverpass Dedup + κ Bridge")]
-    HM --> CE[("app/calendar_engine.py\n2000-2026 Monthly & 36-Dekad\n2001-2020 Baseline IQR/P95")]
-    WR --> RU{{"app/rules.py\nDeterministic Verdict\n+ verdict_sha256"}}
-    RU --> OUT["Interactive Web UI, CSV, GeoJSON,\nSatellite Passes .ics, Receipt ZIP"]
+  I[Preset / GeoJSON / coordinates / CSV] --> V[Typed validation + canonical geometry]
+  V --> N[Normalize retained rows + quality + coverage]
+  N --> H[Cell-window occupancy + pooled bridge]
+  H --> C[Calendar + complete-year summaries]
+  C --> R[Versioned deterministic rules + Q0-Q8]
+  R --> S[Content-bound immutable snapshot]
+  S --> U[Five-view dashboard]
+  S --> E[Six exports + offline verifier]
 ```
 
-## 2. Four-Stage Physical Harmonization (`app/harmonize.py`)
+| Responsibility | Code |
+| --- | --- |
+| Strict options/HTTP contracts | `app/models.py`, `app/http_limits.py` |
+| Full geometry, holes, dateline, canonical IDs | `app/geometry.py`, `app/canonical.py` |
+| CSV ingestion / generated fixtures | `app/datasets.py` |
+| Missing measurements and sensor aliases | `app/schema_mapping.py` |
+| Published logical schemas | `app/schema_manifest.py` |
+| Observation identities and anchored windows | `app/observations.py` |
+| Pooled sensor bridge and diagnostic eras | `app/harmonize.py` |
+| Coverage, reference statistics and phenology | `app/calendar_engine.py`, `app/stats.py` |
+| Decision / evidence relationships | `app/rules.py`, `app/evidence.py` |
+| Orchestration / scenarios / identity | `app/agents.py`, `app/run_state.py` |
+| Shared mission references / modeled passes | `app/satellites.py`, `app/geo_passes.py` |
+| Copied, locked, bounded snapshots | `app/run_store.py` |
+| Complete CSV/GeoJSON/ICS/receipt/ZIP | `app/exports.py`, `app/receipt.py`, `verify.py` |
+| HTTP routing | `app/api.py` |
+| UI orchestration and focused modules | `app/web/static/app.js`, `app/web/static/js/` |
 
-1. **Equal-Area 1 km Sinusoidal Gridding (`cell_id`)**:
-   $$\text{cell\_id} = \text{G1K}_{\lfloor 100 \cdot \phi \rfloor,\,\lfloor 100 \cdot \lambda \cdot \cos\phi \rfloor}$$
-   Collapses multiple 375 m VIIRS sub-pixel detections of the same flame front into a single 1 km MODIS-equivalent cell.
-2. **Afternoon Constellation Overpass Deduplication**:
-   Aqua (13:30 LST), Suomi NPP (13:30 LST), NOAA-20 (13:25 LST), and NOAA-21 (13:20 LST) observe the same afternoon fire within minutes of each other. FireTrace groups by `(cell_id, acq_date, daynight)` and applies $\text{dedup\_factor} = 1 / N_{\text{afternoon\_sats}}$.
-3. **2012–2024 Overlap Calibration Bridge ($\kappa$)**:
-   Over the multi-sensor overlap window (`2012..2024`), FireTrace fits the regional transfer coefficient:
-   $$\kappa = \frac{\sum_{m \in \text{overlap}} M_m}{\sum_{m \in \text{overlap}} V_m}$$
-   and computes **Harmonized Hotspot Equivalents (HHE)**, eliminating 89%–99% of the artificial 2012 step-jump while preserving genuine climate-driven anomalies ($R^2 = 0.96\text{–}0.99$).
-4. **Static Industrial Gas Flare Separation (`STATIC_FLARE`)**:
-   Flags stationary emitters (`type != 0` or active $\ge 8\text{ months/year}$ in the same 1 km cell) so oil/gas flares do not corrupt wildfire or agricultural calendars.
+A run ID binds full AOI, source rows, normalized input summary, options,
+calculation-source digest, explicit reference and lineage. Counterfactuals create
+new states from retained sources. The median scenario changes only an explicitly
+hypothetical metric and its derived summaries; it preserves observed rows,
+counts, power and reference climatology. API responses omit private source
+records, while the saved audit ZIP contains retained input for reproduction.
 
-## 3. Deterministic Verdict Rules (`app/rules.py`)
+The in-memory LRU is limited to 16 runs/64 MiB, copies on entry/exit and rejects
+same-ID/different-content writes. Analysis/upload work runs outside the ASGI
+loop. Body limits bound parsing. There is no authentication, shared-user
+isolation, durable database or background live ingestion.
 
-| Rule | Verdict | Condition |
-|---|---|---|
-| **Rule 1** | `UNVERIFIABLE` | Out-of-bounds geometry, $<5$ baseline years, or $>50\%$ static industrial gas flare contamination (`STATIC_FLARE_CONTAMINATION`) |
-| **Rule 2** | `CRITICAL_ANOMALY` | Focus period exceeds 2001–2020 95th percentile with $Z_{\text{robust}} \ge 2.0$, out-of-season eruption, or nighttime FRP crown-fire surge |
-| **Rule 3** | `ELEVATED_WATCH` | Activity above historical IQR ($1.0 \le Z_{\text{robust}} < 2.0$), multi-decadal intensification slope $\ge +22\%/\text{decade}$, or early season onset |
-| **Rule 4** | `NOMINAL_REGIME` | Activity tracks within the 2001–2020 seasonal median and interquartile envelope |
+The browser cancels superseded requests and also checks a revision counter.
+Responses from earlier selections cannot overwrite current state. DOM content is
+constructed as text, source labels remain visible, plots provide text/table
+alternatives, and calendar cells use one keyboard entry with arrow navigation.
+Design tokens generate CSS and the standalone preview; schema declarations
+generate the mapping document. No CDN is required.
+
+See [science and model limits](SCIENCE.md), [input contracts](INPUTS.md),
+[receipt scope](RECEIPTS.md), [exports](EXPORTS.md), and
+[design rationale](../DESIGN.md).

@@ -186,11 +186,11 @@ elevation, motion, and breakpoint decisions.
 `docs/MAPPING_MANIFESTO.md`, `docs/SUBMISSION.md`, `PROJECT-CONTEXT.md`,
 `judge.py`, `smoke_test.py`, `tests/test_documentation.py`.
 
-- [ ] Align setup, commands, routes, schemas, formulas, fixture metrics, modeling
+- [x] Align setup, commands, routes, schemas, formulas, fixture metrics, modeling
   limits, and the distinction between demo claims and external validation.
-- [ ] Add a reproducible short judging walkthrough and samples. Check relative
+- [x] Add a reproducible short judging walkthrough and samples. Check relative
   links and referenced artifacts against the actual repository.
-- [ ] Extend meaningful smoke/judge checks to cover corrected workflows rather
+- [x] Extend meaningful smoke/judge checks to cover corrected workflows rather
   than merely asserting that outputs are non-empty.
 - [ ] Follow README commands in a fresh environment and run all documented suites.
 

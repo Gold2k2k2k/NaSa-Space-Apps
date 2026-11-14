@@ -15,11 +15,11 @@ Schema Manifesto, and Trap Bench.
 
 ## Current phase
 
-The November 14, 2026 upgrade is in progress on `codex/firetrace-upgrade`.
-Antigravity's surveys and milestone plan were recovered. The approved design,
-runtime setup, receipt-integrity fixes, and strict input/geometry contracts are
-implemented. Scientific semantics, complete workflow state, the UI/design system,
-and final verification/documentation remain in progress.
+The approved upgrade is implemented on `codex/firetrace-upgrade`: validated
+inputs, scientific/coverage semantics, immutable workflows, receipts/exports,
+modeled passes and the tokenized five-view dashboard. Final fresh-environment
+verification and independent Standards/Spec review are in progress. Antigravity
+provided surveys and planning; its interrupted implementation was continued here.
 
 ## Constraints
 

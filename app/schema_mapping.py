@@ -2,8 +2,8 @@
 
 Maps three heterogeneous NASA Earthdata FIRMS source schemas:
   1. firms_modis_c61        (Terra & Aqua MODIS Collection 6.1, 1000 m nadir)
-  2. firms_viirs_snpp       (Suomi NPP VIIRS 375 m, 2012-present)
-  3. firms_viirs_noaa20_21  (NOAA-20 / NOAA-21 VIIRS 375 m, 2018-present)
+  2. firms_viirs_snpp       (Suomi NPP VIIRS 375 m, 2012 to known S-NPP cessation)
+  3. firms_viirs_noaa20_21  (NOAA-20 / NOAA-21 VIIRS 375 m, from declared FIRMS product availability)
 
 Into four harmonized target schemas:
   1. harmonized_hotspots
@@ -18,223 +18,11 @@ import re
 from datetime import date
 from typing import Any, Optional
 
+from app.schema_manifest import MAPPING_MANIFESTO, SOURCE_SCHEMAS, TARGET_SCHEMAS
+
 NULL_MARKERS = {"", "null", "none", "n/a", "na", "nan", "-"}
 CONFIDENCE_WEIGHTS = {"unknown": 0.0, "low": 0.45, "nominal": 0.80, "high": 1.00}
 _DATE_RE = re.compile(r"^(\d{4})-(\d{2})-(\d{2})$")
-
-SOURCE_SCHEMAS: dict[str, dict[str, Any]] = {
-    "firms_modis_c61": {
-        "description": "MODIS Collection 6.1 Active Fire (Terra & Aqua, 2000-present, 1000 m nadir)",
-        "fields": {
-            "latitude": "float",
-            "longitude": "float",
-            "brightness": "float (Kelvin, MODIS Ch 21/22 MIR)",
-            "scan": "float (along-scan pixel km)",
-            "track": "float (along-track pixel km)",
-            "acq_date": "string (YYYY-MM-DD)",
-            "acq_time": "string (HHMM UTC)",
-            "satellite": "string ('Terra' | 'Aqua' | 'T' | 'A')",
-            "instrument": "string ('MODIS')",
-            "confidence": "int (0..100)",
-            "version": "string (e.g. '6.1NRT' or '61')",
-            "bright_t31": "float (Kelvin, MODIS Ch 31 TIR)",
-            "frp": "float (MW)",
-            "daynight": "string ('D' | 'N')",
-            "type": "int (0=presumed vegetation fire, 1=active volcano, 2=other static land source, 3=offshore)",
-        },
-    },
-    "firms_viirs_snpp": {
-        "description": "VIIRS Suomi NPP 375 m Active Fire (2012-present)",
-        "fields": {
-            "latitude": "float",
-            "longitude": "float",
-            "bright_ti4": "float (Kelvin, VIIRS I4 MIR)",
-            "scan": "float (along-scan pixel km)",
-            "track": "float (along-track pixel km)",
-            "acq_date": "string (YYYY-MM-DD)",
-            "acq_time": "string (HHMM UTC)",
-            "satellite": "string ('N' | 'Suomi NPP')",
-            "instrument": "string ('VIIRS')",
-            "confidence": "string ('l' | 'n' | 'h')",
-            "version": "string (e.g. '2.0NRT' or '2')",
-            "bright_ti5": "float (Kelvin, VIIRS I5 TIR)",
-            "frp": "float (MW)",
-            "daynight": "string ('D' | 'N')",
-            "type": "int (0=vegetation fire, 1=volcano, 2=static land source, 3=offshore)",
-        },
-    },
-    "firms_viirs_noaa20_21": {
-        "description": "VIIRS NOAA-20 / JPSS-1 (2018+) & NOAA-21 / JPSS-2 (2023+) 375 m Active Fire",
-        "fields": {
-            "latitude": "float",
-            "longitude": "float",
-            "bright_ti4": "float (Kelvin, VIIRS I4 MIR)",
-            "scan": "float",
-            "track": "float",
-            "acq_date": "string (YYYY-MM-DD)",
-            "acq_time": "string (HHMM UTC)",
-            "satellite": "string ('N20' | 'N21' | 'NOAA-20' | 'NOAA-21' | '1' | '2')",
-            "instrument": "string ('VIIRS')",
-            "confidence": "string ('l' | 'n' | 'h' | 'low' | 'nominal' | 'high')",
-            "version": "string",
-            "bright_ti5": "float (Kelvin, VIIRS I5 TIR)",
-            "frp": "float (MW)",
-            "daynight": "string ('D' | 'N')",
-            "type": "int",
-        },
-    },
-}
-
-TARGET_SCHEMAS: dict[str, dict[str, str]] = {
-    "harmonized_hotspots": {
-        "hotspot_id": "string NOT NULL",
-        "cell_id": "string NOT NULL",
-        "lat": "float NOT NULL",
-        "lon": "float NOT NULL",
-        "acq_date": "date (YYYY-MM-DD) NOT NULL",
-        "year": "int NOT NULL",
-        "month": "int NOT NULL",
-        "dekad": "int (1..36) NOT NULL",
-        "daynight": "string ('D'|'N') NOT NULL",
-        "sensor_family": "string ('MODIS'|'VIIRS'|'HARMONIZED_BOTH') NOT NULL",
-        "mir_bt_k": "float NOT NULL",
-        "tir_bt_k": "float NOT NULL",
-        "confidence_class": "string ('low'|'nominal'|'high') NOT NULL",
-        "confidence_weight": "float NOT NULL",
-        "effective_area_km2": "float NOT NULL",
-        "raw_detections": "int NOT NULL",
-        "overpass_dedup_factor": "float NOT NULL",
-        "hhe": "float NOT NULL",
-        "hfre_mw": "float NOT NULL",
-        "fire_category": "string ('WILDFIRE'|'AGRICULTURAL_BURN'|'STATIC_FLARE') NOT NULL",
-    },
-    "burning_calendar_cells": {
-        "aoi_id": "string NOT NULL",
-        "year": "int NOT NULL",
-        "month": "int NOT NULL",
-        "hhe_total": "float NOT NULL",
-        "raw_total": "int NOT NULL",
-        "raw_modis": "int NOT NULL",
-        "raw_viirs": "int NOT NULL",
-        "frp_total_mw": "float NOT NULL",
-        "night_share": "float NOT NULL",
-        "hist_median_hhe": "float NOT NULL",
-        "hist_mean_hhe": "float NOT NULL",
-        "hist_iqr_hhe": "float NOT NULL",
-        "hist_p90_hhe": "float NOT NULL",
-        "hist_p95_hhe": "float NOT NULL",
-        "anomaly_abs": "float NOT NULL",
-        "anomaly_pct": "float NOT NULL",
-        "z_robust": "float NOT NULL",
-        "severity_band": "string NOT NULL",
-    },
-    "fire_regime_summaries": {
-        "aoi_id": "string NOT NULL",
-        "year_start": "int NOT NULL",
-        "year_end": "int NOT NULL",
-        "focus_year": "int NOT NULL",
-        "focus_month": "int NOT NULL",
-        "peak_months": "array<int> NOT NULL",
-        "peak_year": "int NOT NULL",
-        "peak_month_record": "object NOT NULL",
-        "focus_hhe": "float NOT NULL",
-        "focus_hist_median": "float NOT NULL",
-        "focus_anomaly_pct": "float NOT NULL",
-        "focus_z_robust": "float NOT NULL",
-        "trend_slope_per_decade": "float NOT NULL",
-        "wildfire_share": "float NOT NULL",
-        "agricultural_share": "float NOT NULL",
-        "flare_contamination_share": "float NOT NULL",
-        "verdict": "string NOT NULL",
-        "verdict_sha256": "string NOT NULL",
-    },
-    "sensor_calibration_audit": {
-        "aoi_id": "string NOT NULL",
-        "overlap_years": "string NOT NULL",
-        "raw_viirs_to_modis_ratio": "float NOT NULL",
-        "calibrated_kappa": "float NOT NULL",
-        "overpass_duplicates_removed": "int NOT NULL",
-        "raw_step_jump_2012_pct": "float NOT NULL",
-        "harmonized_step_diff_2012_pct": "float NOT NULL",
-        "bias_reduction_pct": "float NOT NULL",
-        "bridge_r2": "float NOT NULL",
-    },
-}
-
-MAPPING_MANIFESTO: list[dict[str, Any]] = [
-    {
-        "target_table": "harmonized_hotspots",
-        "anchor_source": "Union of firms_modis_c61, firms_viirs_snpp, firms_viirs_noaa20_21 clustered onto 1 km x 1 km grid (cell_id, acq_date, daynight)",
-        "join_paths": [
-            "UNION ALL normalized MODIS C6.1 + VIIRS S-NPP + VIIRS NOAA-20/21 on common intermediate schema",
-            "GROUP BY (cell_id, acq_date, daynight) to cluster 375 m VIIRS sub-pixels onto 1 km MODIS-equivalent cell",
-            "LEFT JOIN sensor_calibration_audit ON aoi_id for cross-sensor kappa bridging factor",
-        ],
-        "fields": [
-            {"target": "hotspot_id", "source": "SHA256(cell_id, acq_date, daynight)[:12]", "type": "Derived", "rationale": "Deterministic unique identifier per harmonized 1 km cell-pass event"},
-            {"target": "cell_id", "source": "G1K_{floor(lat*100)}_{floor(lon*100*cos(lat))}", "type": "Derived", "rationale": "Equal-area ~1 km grid eliminates 1 km MODIS vs 375 m VIIRS pixel-size mismatch"},
-            {"target": "lat, lon", "source": "FRP-weighted AVG(latitude), AVG(longitude)", "type": "Aggregated", "rationale": "Preserves sub-grid thermal centroid within each 1 km cell"},
-            {"target": "acq_date, year, month, dekad", "source": "ISO8601(acq_date) -> Y, M, dekad (1..36)", "type": "Direct / Derived", "rationale": "Standardizes temporal keys for monthly and 10-day burning calendars"},
-            {"target": "daynight", "source": "UPPER(TRIM(daynight))", "type": "Derived", "rationale": "Separates daytime agricultural burns from nighttime-persistent wildfires"},
-            {"target": "sensor_family", "source": "MODIS | VIIRS | HARMONIZED_BOTH", "type": "Derived", "rationale": "Tracks sensor provenance while downstream calendar metrics remain sensor-agnostic"},
-            {"target": "mir_bt_k", "source": "COALESCE(bright_ti4, brightness)", "type": "Synonym Resolution", "rationale": "Unifies MODIS Ch 21/22 (brightness) and VIIRS I4 (bright_ti4) mid-infrared Kelvin"},
-            {"target": "tir_bt_k", "source": "COALESCE(bright_ti5, bright_t31)", "type": "Synonym Resolution", "rationale": "Unifies MODIS Ch 31 (bright_t31) and VIIRS I5 (bright_ti5) thermal infrared Kelvin"},
-            {"target": "confidence_class, confidence_weight", "source": "MODIS 0-100 & VIIRS l/n/h -> {low:0.45, nominal:0.80, high:1.00}", "type": "Derived", "rationale": "Resolves numeric vs categorical confidence mismatch across sensors"},
-            {"target": "effective_area_km2", "source": "scan * track", "type": "Derived", "rationale": "Captures off-nadir bow-tie footprint growth vs nadir (1.0 vs 0.1406 km2)"},
-            {"target": "raw_detections", "source": "COUNT(*)", "type": "Aggregated", "rationale": "Retains raw unharmonized count to audit 5x-8x VIIRS inflation"},
-            {"target": "overpass_dedup_factor", "source": "1.0 / COUNT(DISTINCT afternoon_satellites)", "type": "Derived", "rationale": "Deduplicates Aqua + S-NPP + NOAA-20 + NOAA-21 afternoon constellation passes"},
-            {"target": "hhe", "source": "Harmonized Hotspot Equivalent", "type": "Derived", "rationale": "Sensor-agnostic active burning unit calibrated across 2012-2024 overlap bridge"},
-            {"target": "hfre_mw", "source": "Calibrated Fire Radiative Power (MW)", "type": "Derived", "rationale": "Cross-sensor harmonized radiative fire energy"},
-            {"target": "fire_category", "source": "STATIC_FLARE | AGRICULTURAL_BURN | WILDFIRE", "type": "Derived", "rationale": "Separates vegetation fires from static gas flares (type!=0 or >=8 mo/yr persistence)"},
-        ],
-    },
-    {
-        "target_table": "burning_calendar_cells",
-        "anchor_source": "harmonized_hotspots aggregated by (aoi_id, year, month)",
-        "join_paths": [
-            "GROUP BY (aoi_id, year, month) from harmonized_hotspots (excluding static flares when filter enabled)",
-            "LEFT JOIN 2001-2020 monthly baseline climatology ON (aoi_id, month)",
-        ],
-        "fields": [
-            {"target": "aoi_id, year, month", "source": "AOI identifier + calendar coordinates (2000-2026, 1-12)", "type": "Direct", "rationale": "Primary composite key for the 27 x 12 burning calendar matrix"},
-            {"target": "hhe_total, raw_total, raw_modis, raw_viirs", "source": "SUM(hhe), SUM(raw_detections), sensor splits", "type": "Aggregated", "rationale": "Enables side-by-side comparison of harmonized vs unharmonized records"},
-            {"target": "frp_total_mw, night_share", "source": "SUM(hfre_mw), SUM(hhe WHERE daynight='N') / hhe_total", "type": "Aggregated", "rationale": "Quantifies radiative intensity and nocturnal fire persistence"},
-            {"target": "hist_median_hhe, hist_mean_hhe, hist_iqr_hhe, hist_p90_hhe, hist_p95_hhe", "source": "2001-2020 baseline statistics per month", "type": "Joined", "rationale": "Non-parametric climatology reference immune to single mega-fire years"},
-            {"target": "anomaly_abs, anomaly_pct, z_robust", "source": "(hhe_total - hist_median) / MAX(0.7413*hist_iqr, 0.5)", "type": "Derived", "rationale": "Measures severity relative to multi-year historical median"},
-            {"target": "severity_band", "source": "low | normal | elevated | high | extreme", "type": "Derived", "rationale": "Maps robust anomaly into accessible perceptual severity tiers"},
-        ],
-    },
-    {
-        "target_table": "fire_regime_summaries",
-        "anchor_source": "burning_calendar_cells across selected AOI & date window",
-        "join_paths": [
-            "AGGREGATE burning_calendar_cells over (year_start..year_end)",
-            "JOIN sensor_calibration_audit ON aoi_id",
-        ],
-        "fields": [
-            {"target": "peak_months, peak_year, peak_month_record", "source": "ARGMAX over baseline median & historical cells", "type": "Aggregated", "rationale": "Identifies critical fire months and historical worst years"},
-            {"target": "focus_hhe, focus_hist_median, focus_anomaly_pct, focus_z_robust", "source": "Lookup (focus_year, focus_month) cell", "type": "Joined", "rationale": "Directly compares current/selected month against historical median"},
-            {"target": "trend_slope_per_decade", "source": "Theil-Sen / OLS slope of annual harmonized HHE (2000-2026)", "type": "Derived", "rationale": "Measures genuine multi-decadal fire regime change without sensor artifact"},
-            {"target": "wildfire_share, agricultural_share, flare_contamination_share", "source": "Shares of total thermal detections by fire_category", "type": "Aggregated", "rationale": "Disentangles ecological/wildfire burning, crop residue fires, and industrial flares"},
-            {"target": "verdict, verdict_sha256", "source": "app/rules.py deterministic decision + canonical SHA-256", "type": "Derived", "rationale": "Reproducible, auditable regime classification"},
-        ],
-    },
-    {
-        "target_table": "sensor_calibration_audit",
-        "anchor_source": "Overlap period (2012-2025) detections in firms_modis_c61 + firms_viirs_*",
-        "join_paths": [
-            "INNER JOIN monthly MODIS & VIIRS series over overlap years (2012..2025)",
-        ],
-        "fields": [
-            {"target": "raw_viirs_to_modis_ratio", "source": "SUM(raw_viirs) / SUM(raw_modis) in overlap", "type": "Aggregated", "rationale": "Quantifies raw sensor count inflation (typically 4x to 9x)"},
-            {"target": "calibrated_kappa", "source": "Empirical regional HHE transfer coefficient", "type": "Derived", "rationale": "Bridges VIIRS 375 m clusters to 1 km MODIS-equivalent activity"},
-            {"target": "overpass_duplicates_removed", "source": "Raw detections collapsed during afternoon constellation passes", "type": "Aggregated", "rationale": "Proves elimination of Aqua + S-NPP + NOAA-20/21 double counting"},
-            {"target": "raw_step_jump_2012_pct, harmonized_step_diff_2012_pct", "source": "Pre/Post-2012 transition discontinuity (%) before vs after", "type": "Derived", "rationale": "Verifies removal of the artificial 2012 VIIRS launch cliff"},
-            {"target": "bias_reduction_pct, bridge_r2", "source": "1 - |harm_diff|/|raw_jump| and Pearson R^2 on overlap", "type": "Derived", "rationale": "Quantifies harmonization quality across the overlap bridge"},
-        ],
-    },
-]
-
 
 def clean_str(val: Any) -> Optional[str]:
     if val is None:
@@ -343,6 +131,8 @@ def dekad_for(d: date) -> int:
 
 def normalize_hotspot_row(raw: dict[str, Any]) -> dict[str, Any]:
     """Normalize a raw FIRMS MODIS or VIIRS row into the unified intermediate schema."""
+    if not isinstance(raw, dict):
+        raise ValueError("Hotspot rows must be objects")
     lat = clean_float(raw.get("latitude", raw.get("lat")))
     lon = clean_float(raw.get("longitude", raw.get("lon")))
     if lat is None or lon is None or not (-90.0 <= lat <= 90.0 and -180.0 <= lon <= 180.0):
@@ -428,6 +218,8 @@ def normalize_hotspot_row(raw: dict[str, Any]) -> dict[str, Any]:
         "acq_time_is_missing": acq_time is None,
         "firms_type_is_missing": clean_str(raw.get("type")) is None,
         "source_version": clean_str(raw.get("version")),
+        "scan_is_missing": clean_str(raw.get("scan")) is None,
+        "track_is_missing": clean_str(raw.get("track")) is None,
     }
 
 

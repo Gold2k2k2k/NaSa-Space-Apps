@@ -12,7 +12,10 @@ Coordinates use the MODIS sinusoidal sphere radius 6,371,007.181 m, with
 `G1K_y_x` bins are exactly 1,000 m in that projection. They are a target grid,
 **not native MODIS tile pixels**. Point assignment does not implement footprint
 intersection or bow-tie correction. Scan × track area is retained as metadata;
-neither it nor point density establishes burned area.
+neither it nor point density establishes burned area. Missing scan/track
+dimensions use nominal 1 km MODIS or 0.375 km VIIRS defaults. Individual missing
+flags, quality counts and event `footprint_basis` distinguish these defaults
+from supplied dimensions. They are metadata, not measured footprint areas.
 
 Confidence classes have explicit heuristic weights: low 0.45, nominal 0.8, high
 1.0, unknown 0. Missing confidence is excluded at the lowest supported filter.
