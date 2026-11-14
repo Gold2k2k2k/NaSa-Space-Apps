@@ -49,10 +49,10 @@ and Playwright with an installed Chrome/Edge browser.
 **Interfaces:** Existing `python run.py`, `python smoke_test.py`,
 `python judge.py`, and `python -m unittest discover -s tests -v` remain valid.
 
-- [ ] Reproduce current import failure and verify declared imports/dependencies.
-- [ ] Create a project virtual environment, declare missing multipart support,
+- [x] Reproduce current import failure and verify declared imports/dependencies.
+- [x] Create a project virtual environment, declare missing multipart support,
   install a compatible complete runtime, and record tested versions.
-- [ ] Run the existing suites through that interpreter and record actual baseline
+- [x] Run the existing suites through that interpreter and record actual baseline
   failures; document the clean setup commands with the delivered dependencies.
 
 ## Task 2: Receipt integrity and deterministic packaging
@@ -64,16 +64,17 @@ and Playwright with an installed Chrome/Edge browser.
 `check_receipt(receipt: dict) -> dict`, and `package_zip(run_data: dict) -> bytes`
 remain the public seams. Receipt revisions are explicitly versioned.
 
-- [ ] Add failing tests: changing `verdict`, `deciding_rule`, `rules_version`, or
+- [x] Add failing tests: changing `verdict`, `deciding_rule`, `rules_version`, or
   findings must return `TAMPERED`; removing/duplicating required queries must
   fail; malformed CLI input must exit 2, never traceback.
-- [ ] Run `python -m unittest discover -s tests -p test_receipt_integrity.py -v`
+- [x] Run `python -m unittest discover -s tests -p test_receipt_integrity.py -v`
   and confirm the specific failures against current code.
-- [ ] Bind full required evidence and decision fields, re-derive all rule context,
+- [x] Bind full required evidence and decision fields, re-derive all rule context,
   and make archive serialization deterministic. Preserve/document v1 verification
   where feasible and generate a new version when the contract changes.
-- [ ] Add and run tests for every query/evidence relationship, JSON round-trip,
-  fixed-run byte equality, valid counterfactual receipts, and tampered CLI exit 1.
+- [x] Add and run tests for every query/evidence relationship, JSON round-trip,
+  fixed-run byte equality, and tampered CLI exit 1. Complete counterfactual
+  generation and receipt validity together in Task 5, which owns that state.
 
 ## Task 3: Canonical geometry and input contracts
 

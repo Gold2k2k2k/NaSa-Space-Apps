@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import io
+import copy
 import json
 import zipfile
 from pathlib import Path
@@ -15,7 +16,8 @@ from app.exports import (
     export_hotspots_geojson,
 )
 
-RECEIPT_VERSION = "firetrace-receipt-v1"
+RECEIPT_VERSION = "firetrace-receipt-v2"
+LEGACY_RECEIPT_VERSION = "firetrace-receipt-v1"
 RULES_PATH = Path(__file__).resolve().parent / "rules.py"
 DOCS_MANIFESTO = Path(__file__).resolve().parent.parent / "docs" / "MAPPING_MANIFESTO.md"
 
@@ -36,7 +38,7 @@ def build_receipt(run_data: dict[str, Any]) -> dict[str, Any]:
             "sha256": sha256_of(q["rows"]),
         })
 
-    return {
+    receipt = {
         "receipt_version": RECEIPT_VERSION,
         "run_id": run_data["run_id"],
         "rules_version": run_data["rules_version"],
@@ -61,22 +63,37 @@ def build_receipt(run_data: dict[str, Any]) -> dict[str, Any]:
         "deciding_rule": run_data["deciding_rule"],
         "findings": run_data["findings"],
         "verdict_sha256": run_data["verdict_sha256"],
+        "calendar": run_data["calendar"],
+        "input_summary": run_data["_input_summary"],
+        "persistent_cells_count": run_data["_persistent_cells_count"],
+        "verification_scope": "Unsigned reproducibility and internal evidence consistency; not source authentication.",
     }
+    receipt = copy.deepcopy(receipt)
+    receipt["receipt_sha256"] = sha256_of(receipt)
+    return receipt
 
 
 def package_zip(run_data: dict[str, Any]) -> bytes:
     """Create an in-memory ZIP audit bundle containing all evidence and downloadable exports."""
     receipt = build_receipt(run_data)
     buf = io.BytesIO()
+    public_evidence = {k: v for k, v in run_data.items() if not k.startswith("_")}
+    members = {
+        "evidence.json": json.dumps(public_evidence, ensure_ascii=False, indent=2),
+        "receipt.json": json.dumps(receipt, ensure_ascii=False, indent=2),
+        "hotspots_harmonized.csv": export_hotspots_csv(run_data),
+        "burning_calendar.csv": export_calendar_csv(run_data),
+        "hotspots.geojson": json.dumps(export_hotspots_geojson(run_data), ensure_ascii=False, indent=2),
+        "fire_watch.ics": export_calendar_ics(run_data),
+    }
+    if DOCS_MANIFESTO.is_file():
+        members["MAPPING_MANIFESTO.md"] = DOCS_MANIFESTO.read_text(encoding="utf-8")
     with zipfile.ZipFile(buf, "w", compression=zipfile.ZIP_DEFLATED) as zf:
-        public_evidence = {k: v for k, v in run_data.items() if not k.startswith("_")}
-        zf.writestr("evidence.json", json.dumps(public_evidence, ensure_ascii=False, indent=2))
-        zf.writestr("receipt.json", json.dumps(receipt, ensure_ascii=False, indent=2))
-        zf.writestr("hotspots_harmonized.csv", export_hotspots_csv(run_data))
-        zf.writestr("burning_calendar.csv", export_calendar_csv(run_data))
-        zf.writestr("hotspots.geojson", json.dumps(export_hotspots_geojson(run_data), ensure_ascii=False, indent=2))
-        zf.writestr("fire_watch.ics", export_calendar_ics(run_data))
-        if DOCS_MANIFESTO.is_file():
-            zf.writestr("MAPPING_MANIFESTO.md", DOCS_MANIFESTO.read_text(encoding="utf-8"))
+        for name, contents in sorted(members.items()):
+            info = zipfile.ZipInfo(name, date_time=(1980, 1, 1, 0, 0, 0))
+            info.create_system = 3
+            info.external_attr = 0o100644 << 16
+            zf.writestr(info, contents.encode("utf-8"),
+                        compress_type=zipfile.ZIP_DEFLATED, compresslevel=9)
     return buf.getvalue()
 

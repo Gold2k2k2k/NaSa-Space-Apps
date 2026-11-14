@@ -13,6 +13,7 @@ from typing import Any, Optional
 from app.calendar_engine import MONTH_NAMES, build_burning_calendar
 from app.canonical import sha256_of
 from app.datasets import generate_firms_records, parse_custom_aoi
+from app.evidence import QUERY_TITLES, expected_query_rows, summarize_inputs
 from app.harmonize import harmonize_records
 from app.rules import decide
 
@@ -57,92 +58,15 @@ def _build_query_tables(
     raw_records: list[dict[str, Any]],
     harmonized: dict[str, Any],
     calendar: dict[str, Any],
+    input_summary: Optional[dict[str, Any]] = None,
 ) -> list[dict[str, Any]]:
-    audit = harmonized["sensor_calibration_audit"]
-    focus = calendar["focus_comparison"]
-    records = calendar["summary_records"]
-    hotspots = harmonized["hotspots"]
-    modis_n = sum(1 for r in raw_records if (r.get("instrument") == "MODIS" or "brightness" in r))
-    viirs_n = len(raw_records) - modis_n
-
-    queries = [
-        {
-            "query_id": "Q0",
-            "title": "AOI Geometry & Spatial Bounds",
-            "rows": [{"aoi_id": aoi["aoi_id"], "lat": aoi["lat"], "lon": aoi["lon"], "area_km2": aoi["area_km2"]}],
-        },
-        {
-            "query_id": "Q1",
-            "title": "MODIS Collection 6.1 Ingestion (Terra & Aqua)",
-            "rows": [{"instrument": "MODIS", "raw_detections": modis_n, "years": f"{calendar['year_start']}-{calendar['year_end']}"}],
-        },
-        {
-            "query_id": "Q2",
-            "title": "VIIRS 375 m Ingestion (S-NPP, NOAA-20, NOAA-21)",
-            "rows": [{"instrument": "VIIRS", "raw_detections": viirs_n, "overlap_years": audit["overlap_years"]}],
-        },
-        {
-            "query_id": "Q3",
-            "title": "1 km Equal-Area Clustering & Afternoon Train Deduplication",
-            "rows": [{
-                "harmonized_cell_events": len(hotspots),
-                "overpass_duplicates_removed": audit["overpass_duplicates_removed"],
-                "calibrated_kappa": audit["calibrated_kappa"],
-            }],
-        },
-        {
-            "query_id": "Q4",
-            "title": "Radiative Power (FRP) & Diurnal Persistence",
-            "rows": [{
-                "focus_frp_mw": focus["frp_total_mw"],
-                "focus_night_share": focus["night_share"],
-                "wildfire_share": audit["wildfire_share"],
-                "agricultural_share": audit["agricultural_share"],
-            }],
-        },
-        {
-            "query_id": "Q5",
-            "title": "Static Industrial Gas Flare Persistence Audit",
-            "rows": [{
-                "static_flare_detections": audit["static_flare_detections"],
-                "flare_contamination_share": audit["flare_contamination_share"],
-                "persistent_cells_count": len(harmonized["persistent_flare_cells"]),
-            }],
-        },
-        {
-            "query_id": "Q6",
-            "title": "2001-2020 Baseline Climatology & Focus Month Anomaly",
-            "rows": [{
-                "focus_year": focus["year"],
-                "focus_month": focus["month"],
-                "focus_value": focus["value"],
-                "hist_median": focus["hist_median"],
-                "hist_p95": focus["hist_p95"],
-                "z_robust": focus["z_robust"],
-                "anomaly_pct": focus["anomaly_pct"],
-            }],
-        },
-        {
-            "query_id": "Q7",
-            "title": "Seasonal Peak & Out-of-Season Check",
-            "rows": [{
-                "peak_months": records["peak_months"],
-                "is_peak_season": focus["is_peak_season"],
-                "rank_in_history": focus["rank_in_history"],
-            }],
-        },
-        {
-            "query_id": "Q8",
-            "title": "Multi-Decadal Trend & 2012 Continuity Bridge",
-            "rows": [{
-                "trend_slope_per_decade": records["trend_slope_per_decade"],
-                "raw_step_jump_2012_pct": audit["raw_step_jump_2012_pct"],
-                "harmonized_step_diff_2012_pct": audit["harmonized_step_diff_2012_pct"],
-                "bias_reduction_pct": audit["bias_reduction_pct"],
-                "bridge_r2": audit["bridge_r2"],
-            }],
-        },
-    ]
+    rows = expected_query_rows(
+        aoi, calendar, harmonized["sensor_calibration_audit"],
+        input_summary if input_summary is not None else summarize_inputs(raw_records),
+        len(harmonized["persistent_flare_cells"]),
+    )
+    queries = [{"query_id": f"Q{i}", "title": title, "rows": [rows[f"Q{i}"]]}
+               for i, title in enumerate(QUERY_TITLES)]
     for q in queries:
         q["row_count"] = len(q["rows"])
         q["sha256"] = sha256_of(q["rows"])
@@ -466,7 +390,8 @@ def run_investigation(
         mode="raw",
     )
     active_calendar = calendar_raw if mode == "raw" else calendar_harm
-    queries = _build_query_tables(aoi, raw_records, harmonized, active_calendar)
+    input_summary = summarize_inputs(raw_records)
+    queries = _build_query_tables(aoi, raw_records, harmonized, active_calendar, input_summary)
 
     trace.append(_trace_line(
         run_id, "Investigator", "execute_harmonize_and_calendar",
@@ -550,6 +475,8 @@ def run_investigation(
         "_hotspots_all": hotspots,
         "_raw_records_count": len(raw_records),
         "_raw_records": raw_records_override,
+        "_input_summary": input_summary,
+        "_persistent_cells_count": len(harmonized["persistent_flare_cells"]),
     }
 
 
