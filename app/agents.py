@@ -21,6 +21,7 @@ from app.rules import decide
 from app.run_state import (CALCULATION_VERSION, DEMO_REFERENCE, apply_calendar_scenario,
                            calculation_digest, content_run_id)
 from app.canonical import canonical_json
+from app.geo_passes import predict_passes
 
 PERSONAS = {
     "responder": "Early Warning & Emergency Responder",
@@ -271,6 +272,8 @@ def run_investigation(
         reference = stamp.astimezone(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
     except (AttributeError, TypeError, ValueError) as error:
         raise ValueError("reference_time must be an ISO timestamp with a UTC offset") from error
+    if not 2000 <= stamp.year <= 2100:
+        raise ValueError("Modeled reference years must be between 2000 and 2100")
     if raw_records_override is not None and (not isinstance(raw_records_override, list) or (len(raw_records_override) > 25000 and aoi["source_kind"] != "generated_demo")):
         raise ValueError("Provided records must be an array of at most 25,000 rows")
     raw_records = copy.deepcopy(raw_records_override) if raw_records_override is not None else generate_firms_records(aoi, year_start=2000, year_end=2026)
@@ -376,6 +379,7 @@ def run_investigation(
         "run_id": run_id,
         "status": "success",
         "reference_time": reference,
+        "passes": predict_passes(aoi["lat"], aoi["lon"], days=5, start_dt=stamp),
         "calculation_version": CALCULATION_VERSION,
         "calculation_sha256": calculation,
         "provenance": {"source_kind": aoi["source_kind"], "source_records_sha256": source_digest,

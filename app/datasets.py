@@ -525,19 +525,18 @@ def generate_firms_records(
 
     # Local-solar nominal observation times are converted to UTC. These are
     # synthetic times, not an orbit propagation or an actual pass prediction.
-    from datetime import datetime, timedelta
-    starts = {"Terra": "2000-11-01", "Aqua": "2002-07-01", "N": "2012-01-20",
-              "N20": "2018-04-01", "N21": "2024-01-17"}
+    from datetime import datetime, timedelta, timezone
+    from app.satellites import SATELLITES_BY_CODE, SNPP_DATA_END
     output = []
     for row in records:
         row["longitude"] = round(wrap_longitude(row["longitude"]), 5)
         sat = row["satellite"]
-        local_minutes = (22 * 60 + 30 if row["daynight"] == "N" else 10 * 60 + 30) if sat == "Terra" else (90 if row["daynight"] == "N" else 810)
-        local_minutes += {"N": 0, "N20": -25, "N21": 25}.get(sat, 0)
+        metadata = SATELLITES_BY_CODE[sat]
+        local_minutes = round(metadata["night_lst_hour" if row["daynight"] == "N" else "day_lst_hour"] * 60)
         stamp = datetime.fromisoformat(row["acq_date"]) + timedelta(minutes=round(local_minutes - row["longitude"] * 4))
         row["acq_date"], row["acq_time"] = stamp.date().isoformat(), stamp.strftime("%H%M")
         row["fixture_version"] = "generated-demo-v2"
-        if row["acq_date"] < starts[sat] or (sat == "N" and stamp >= datetime(2026, 11, 2, 13)):
+        if row["acq_date"] < metadata["product_start"] or (sat == "N" and stamp.replace(tzinfo=timezone.utc) >= SNPP_DATA_END):
             continue
         if geometry_contains(row["longitude"], row["latitude"], geometry):
             output.append(row)

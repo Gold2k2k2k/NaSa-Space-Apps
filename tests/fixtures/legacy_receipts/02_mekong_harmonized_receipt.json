@@ -1,0 +1,693 @@
+{
+  "receipt_version": "firetrace-receipt-v1",
+  "run_id": "ft-48734c3d2a",
+  "rules_version": "2026-11-14.1",
+  "rules_sha256": "244acdc12e32a72d7e5329881db8eec088038b8ae71b002652cb62e7b5b735af",
+  "aoi": {
+    "aoi_id": "AOI-MEK",
+    "name": "Mekong Agricultural Belt",
+    "country": "Thailand / Laos",
+    "biome": "Seasonal Monsoon Cropland & Mixed Deciduous",
+    "lat": 19.2,
+    "lon": 100.45,
+    "radius_km": 105.0,
+    "area_km2": 44100.0,
+    "peak_season": "Feb\u2013Apr",
+    "description": "Intensive smallholder crop-residue burning (maize, rice stubble). Unharmonized raw counts jump +380% after VIIRS launch in 2012 because 375 m pixels detect small agricultural burns that 1 km MODIS missed; harmonization bridges the discontinuity and isolates true elevated activity.",
+    "polygon": [
+      [
+        99.45122,
+        18.25677
+      ],
+      [
+        101.44878,
+        18.25677
+      ],
+      [
+        101.44878,
+        20.14323
+      ],
+      [
+        99.45122,
+        20.14323
+      ],
+      [
+        99.45122,
+        18.25677
+      ]
+    ],
+    "bbox": {
+      "lon_min": 99.45122,
+      "lon_max": 101.44878,
+      "lat_min": 18.25677,
+      "lat_max": 20.14323
+    }
+  },
+  "options": {
+    "year_start": 2000,
+    "year_end": 2026,
+    "focus_year": 2026,
+    "focus_month": 3,
+    "mode": "harmonized",
+    "flare_guard": true,
+    "confidence_min": "low",
+    "persona": "responder"
+  },
+  "calendar_summary": {
+    "mode": "harmonized",
+    "year_start": 2000,
+    "year_end": 2026,
+    "baseline_window": "2001-2020",
+    "baseline_year_count": 20,
+    "focus_comparison": {
+      "year": 2026,
+      "month": 3,
+      "month_name": "Mar",
+      "value": 18.2,
+      "hhe_total": 18.2,
+      "raw_total": 208,
+      "raw_modis": 29,
+      "raw_viirs": 179,
+      "frp_total_mw": 1183.1,
+      "night_share": 0.1021,
+      "hist_median": 13.66,
+      "hist_mean": 13.57,
+      "hist_iqr": 4.57,
+      "hist_p90": 17.21,
+      "hist_p95": 17.72,
+      "anomaly_abs": 4.54,
+      "anomaly_pct": 33.2,
+      "z_robust": 1.34,
+      "severity_band": "high",
+      "rank_in_history": 1,
+      "history_years_count": 27,
+      "is_peak_season": true
+    },
+    "summary_records": {
+      "peak_months": [
+        3,
+        4,
+        2
+      ],
+      "peak_month_names": [
+        "Mar",
+        "Apr",
+        "Feb"
+      ],
+      "peak_year": 2005,
+      "peak_year_value": 53.02,
+      "peak_month_record": {
+        "year": 2026,
+        "month": 3,
+        "month_name": "Mar",
+        "value": 18.2,
+        "hhe_total": 18.2
+      },
+      "trend_slope_per_decade": -1.99,
+      "harmonized_trend_slope_per_decade": -1.99,
+      "raw_trend_slope_per_decade": 222.25
+    },
+    "climatology": [
+      {
+        "month": 1,
+        "month_name": "Jan",
+        "median": 2.43,
+        "mean": 2.52,
+        "q25": 2.18,
+        "q75": 2.97,
+        "iqr": 0.79,
+        "p90": 3.16,
+        "p95": 3.24,
+        "min": 1.4,
+        "max": 3.46,
+        "hhe_median": 2.43
+      },
+      {
+        "month": 2,
+        "month_name": "Feb",
+        "median": 6.94,
+        "mean": 6.84,
+        "q25": 6.24,
+        "q75": 7.42,
+        "iqr": 1.18,
+        "p90": 8.43,
+        "p95": 8.65,
+        "min": 4.26,
+        "max": 8.9,
+        "hhe_median": 6.94
+      },
+      {
+        "month": 3,
+        "month_name": "Mar",
+        "median": 13.66,
+        "mean": 13.57,
+        "q25": 11.17,
+        "q75": 15.74,
+        "iqr": 4.57,
+        "p90": 17.21,
+        "p95": 17.72,
+        "min": 8.67,
+        "max": 18.12,
+        "hhe_median": 13.66
+      },
+      {
+        "month": 4,
+        "month_name": "Apr",
+        "median": 10.17,
+        "mean": 10.53,
+        "q25": 9.26,
+        "q75": 11.75,
+        "iqr": 2.49,
+        "p90": 12.74,
+        "p95": 13.61,
+        "min": 8.08,
+        "max": 14.4,
+        "hhe_median": 10.17
+      },
+      {
+        "month": 5,
+        "month_name": "May",
+        "median": 1.91,
+        "mean": 2.11,
+        "q25": 1.8,
+        "q75": 2.43,
+        "iqr": 0.64,
+        "p90": 2.67,
+        "p95": 2.83,
+        "min": 1.37,
+        "max": 3.35,
+        "hhe_median": 1.91
+      },
+      {
+        "month": 6,
+        "month_name": "Jun",
+        "median": 0.56,
+        "mean": 0.6,
+        "q25": 0.49,
+        "q75": 0.7,
+        "iqr": 0.21,
+        "p90": 0.81,
+        "p95": 0.85,
+        "min": 0.35,
+        "max": 0.95,
+        "hhe_median": 0.56
+      },
+      {
+        "month": 7,
+        "month_name": "Jul",
+        "median": 0.63,
+        "mean": 0.63,
+        "q25": 0.52,
+        "q75": 0.69,
+        "iqr": 0.18,
+        "p90": 0.82,
+        "p95": 0.86,
+        "min": 0.36,
+        "max": 0.96,
+        "hhe_median": 0.63
+      },
+      {
+        "month": 8,
+        "month_name": "Aug",
+        "median": 0.66,
+        "mean": 0.65,
+        "q25": 0.53,
+        "q75": 0.75,
+        "iqr": 0.21,
+        "p90": 0.88,
+        "p95": 0.92,
+        "min": 0.33,
+        "max": 0.94,
+        "hhe_median": 0.66
+      },
+      {
+        "month": 9,
+        "month_name": "Sep",
+        "median": 0.67,
+        "mean": 0.65,
+        "q25": 0.5,
+        "q75": 0.73,
+        "iqr": 0.23,
+        "p90": 0.85,
+        "p95": 0.92,
+        "min": 0.34,
+        "max": 0.92,
+        "hhe_median": 0.67
+      },
+      {
+        "month": 10,
+        "month_name": "Oct",
+        "median": 0.71,
+        "mean": 0.77,
+        "q25": 0.64,
+        "q75": 0.82,
+        "iqr": 0.18,
+        "p90": 1.04,
+        "p95": 1.26,
+        "min": 0.34,
+        "max": 1.3,
+        "hhe_median": 0.71
+      },
+      {
+        "month": 11,
+        "month_name": "Nov",
+        "median": 1.54,
+        "mean": 1.61,
+        "q25": 1.39,
+        "q75": 1.82,
+        "iqr": 0.42,
+        "p90": 2.1,
+        "p95": 2.13,
+        "min": 1.15,
+        "max": 2.29,
+        "hhe_median": 1.54
+      },
+      {
+        "month": 12,
+        "month_name": "Dec",
+        "median": 2.39,
+        "mean": 2.2,
+        "q25": 1.84,
+        "q75": 2.61,
+        "iqr": 0.77,
+        "p90": 2.81,
+        "p95": 2.88,
+        "min": 1.07,
+        "max": 3.14,
+        "hhe_median": 2.39
+      }
+    ],
+    "annual_series": [
+      {
+        "year": 2000,
+        "value": 43.77,
+        "hhe_total": 43.77,
+        "raw_total": 80,
+        "raw_modis": 80,
+        "raw_viirs": 0,
+        "frp_total_mw": 2305.0
+      },
+      {
+        "year": 2001,
+        "value": 45.46,
+        "hhe_total": 45.46,
+        "raw_total": 72,
+        "raw_modis": 72,
+        "raw_viirs": 0,
+        "frp_total_mw": 1831.0
+      },
+      {
+        "year": 2002,
+        "value": 37.12,
+        "hhe_total": 37.12,
+        "raw_total": 63,
+        "raw_modis": 63,
+        "raw_viirs": 0,
+        "frp_total_mw": 1599.0
+      },
+      {
+        "year": 2003,
+        "value": 40.16,
+        "hhe_total": 40.16,
+        "raw_total": 65,
+        "raw_modis": 65,
+        "raw_viirs": 0,
+        "frp_total_mw": 2061.0
+      },
+      {
+        "year": 2004,
+        "value": 45.75,
+        "hhe_total": 45.75,
+        "raw_total": 75,
+        "raw_modis": 75,
+        "raw_viirs": 0,
+        "frp_total_mw": 1891.6
+      },
+      {
+        "year": 2005,
+        "value": 53.02,
+        "hhe_total": 53.02,
+        "raw_total": 83,
+        "raw_modis": 83,
+        "raw_viirs": 0,
+        "frp_total_mw": 2433.4
+      },
+      {
+        "year": 2006,
+        "value": 48.53,
+        "hhe_total": 48.53,
+        "raw_total": 80,
+        "raw_modis": 80,
+        "raw_viirs": 0,
+        "frp_total_mw": 2214.9
+      },
+      {
+        "year": 2007,
+        "value": 42.85,
+        "hhe_total": 42.85,
+        "raw_total": 69,
+        "raw_modis": 69,
+        "raw_viirs": 0,
+        "frp_total_mw": 1916.9
+      },
+      {
+        "year": 2008,
+        "value": 41.27,
+        "hhe_total": 41.27,
+        "raw_total": 64,
+        "raw_modis": 64,
+        "raw_viirs": 0,
+        "frp_total_mw": 1911.5
+      },
+      {
+        "year": 2009,
+        "value": 47.21,
+        "hhe_total": 47.21,
+        "raw_total": 73,
+        "raw_modis": 73,
+        "raw_viirs": 0,
+        "frp_total_mw": 2120.8
+      },
+      {
+        "year": 2010,
+        "value": 49.92,
+        "hhe_total": 49.92,
+        "raw_total": 84,
+        "raw_modis": 84,
+        "raw_viirs": 0,
+        "frp_total_mw": 2288.9
+      },
+      {
+        "year": 2011,
+        "value": 52.05,
+        "hhe_total": 52.05,
+        "raw_total": 83,
+        "raw_modis": 83,
+        "raw_viirs": 0,
+        "frp_total_mw": 2297.7
+      },
+      {
+        "year": 2012,
+        "value": 36.99,
+        "hhe_total": 36.99,
+        "raw_total": 313,
+        "raw_modis": 56,
+        "raw_viirs": 257,
+        "frp_total_mw": 3061.7
+      },
+      {
+        "year": 2013,
+        "value": 32.93,
+        "hhe_total": 32.93,
+        "raw_total": 285,
+        "raw_modis": 50,
+        "raw_viirs": 235,
+        "frp_total_mw": 2443.2
+      },
+      {
+        "year": 2014,
+        "value": 35.44,
+        "hhe_total": 35.44,
+        "raw_total": 302,
+        "raw_modis": 57,
+        "raw_viirs": 245,
+        "frp_total_mw": 2688.8
+      },
+      {
+        "year": 2015,
+        "value": 40.31,
+        "hhe_total": 40.31,
+        "raw_total": 352,
+        "raw_modis": 66,
+        "raw_viirs": 286,
+        "frp_total_mw": 2879.0
+      },
+      {
+        "year": 2016,
+        "value": 50.24,
+        "hhe_total": 50.24,
+        "raw_total": 450,
+        "raw_modis": 78,
+        "raw_viirs": 372,
+        "frp_total_mw": 3841.8
+      },
+      {
+        "year": 2017,
+        "value": 40.13,
+        "hhe_total": 40.13,
+        "raw_total": 353,
+        "raw_modis": 60,
+        "raw_viirs": 293,
+        "frp_total_mw": 3091.9
+      },
+      {
+        "year": 2018,
+        "value": 33.58,
+        "hhe_total": 33.58,
+        "raw_total": 419,
+        "raw_modis": 50,
+        "raw_viirs": 369,
+        "frp_total_mw": 2522.9
+      },
+      {
+        "year": 2019,
+        "value": 35.46,
+        "hhe_total": 35.46,
+        "raw_total": 405,
+        "raw_modis": 50,
+        "raw_viirs": 355,
+        "frp_total_mw": 2241.0
+      },
+      {
+        "year": 2020,
+        "value": 44.95,
+        "hhe_total": 44.95,
+        "raw_total": 525,
+        "raw_modis": 68,
+        "raw_viirs": 457,
+        "frp_total_mw": 3168.8
+      },
+      {
+        "year": 2021,
+        "value": 44.17,
+        "hhe_total": 44.17,
+        "raw_total": 506,
+        "raw_modis": 68,
+        "raw_viirs": 438,
+        "frp_total_mw": 2886.6
+      },
+      {
+        "year": 2022,
+        "value": 46.24,
+        "hhe_total": 46.24,
+        "raw_total": 528,
+        "raw_modis": 68,
+        "raw_viirs": 460,
+        "frp_total_mw": 3594.5
+      },
+      {
+        "year": 2023,
+        "value": 48.01,
+        "hhe_total": 48.01,
+        "raw_total": 536,
+        "raw_modis": 69,
+        "raw_viirs": 467,
+        "frp_total_mw": 3670.8
+      },
+      {
+        "year": 2024,
+        "value": 35.15,
+        "hhe_total": 35.15,
+        "raw_total": 416,
+        "raw_modis": 54,
+        "raw_viirs": 362,
+        "frp_total_mw": 2799.0
+      },
+      {
+        "year": 2025,
+        "value": 36.6,
+        "hhe_total": 36.6,
+        "raw_total": 445,
+        "raw_modis": 56,
+        "raw_viirs": 389,
+        "frp_total_mw": 2882.2
+      },
+      {
+        "year": 2026,
+        "value": 45.4,
+        "hhe_total": 45.4,
+        "raw_total": 562,
+        "raw_modis": 74,
+        "raw_viirs": 488,
+        "frp_total_mw": 3355.6
+      }
+    ],
+    "cells_sha256": "8b0708ff64622bbcaec691d645dd52b1946f453255d21672d237a6d3187ff8ca"
+  },
+  "sensor_calibration_audit": {
+    "aoi_id": "AOI-MEK",
+    "overlap_years": "2012-2024",
+    "overlap_months_count": 146,
+    "raw_viirs_to_modis_ratio": 5.713,
+    "calibrated_kappa": 0.3288,
+    "overpass_duplicates_removed": 4185,
+    "raw_step_jump_2012_pct": 275.0,
+    "harmonized_step_diff_2012_pct": -29.76,
+    "bias_reduction_pct": 89.18,
+    "bridge_r2": 0.961,
+    "total_raw_detections": 7288,
+    "total_harmonized_events": 3103,
+    "static_flare_detections": 0,
+    "flare_contamination_share": 0.0,
+    "wildfire_share": 0.2378,
+    "agricultural_share": 0.7622,
+    "skipped_invalid_rows": 0,
+    "exclude_static_flares": true
+  },
+  "queries": [
+    {
+      "query_id": "Q0",
+      "title": "AOI Geometry & Spatial Bounds",
+      "row_count": 1,
+      "rows": [
+        {
+          "aoi_id": "AOI-MEK",
+          "lat": 19.2,
+          "lon": 100.45,
+          "area_km2": 44100.0
+        }
+      ],
+      "sha256": "28972dc4cdd9237f50857ff3e336e7745166667600cd28a93c8e6618896b1c15"
+    },
+    {
+      "query_id": "Q1",
+      "title": "MODIS Collection 6.1 Ingestion (Terra & Aqua)",
+      "row_count": 1,
+      "rows": [
+        {
+          "instrument": "MODIS",
+          "raw_detections": 1815,
+          "years": "2000-2026"
+        }
+      ],
+      "sha256": "1ae27e56361603f2a647e4a7cf8fb82ae23965960a3150660ff4b3a41c4c40bd"
+    },
+    {
+      "query_id": "Q2",
+      "title": "VIIRS 375 m Ingestion (S-NPP, NOAA-20, NOAA-21)",
+      "row_count": 1,
+      "rows": [
+        {
+          "instrument": "VIIRS",
+          "raw_detections": 5473,
+          "overlap_years": "2012-2024"
+        }
+      ],
+      "sha256": "b94fc443394f3a58bf5bbdf5e48a335a3cee13aa1167261d0ae9b519cd68904e"
+    },
+    {
+      "query_id": "Q3",
+      "title": "1 km Equal-Area Clustering & Afternoon Train Deduplication",
+      "row_count": 1,
+      "rows": [
+        {
+          "harmonized_cell_events": 3103,
+          "overpass_duplicates_removed": 4185,
+          "calibrated_kappa": 0.3288
+        }
+      ],
+      "sha256": "7e791f137ddae1b6d1478396861056ba32c0daed44f4f7023513f9dad409f304"
+    },
+    {
+      "query_id": "Q4",
+      "title": "Radiative Power (FRP) & Diurnal Persistence",
+      "row_count": 1,
+      "rows": [
+        {
+          "focus_frp_mw": 1183.1,
+          "focus_night_share": 0.1021,
+          "wildfire_share": 0.2378,
+          "agricultural_share": 0.7622
+        }
+      ],
+      "sha256": "5dfa5c8d461b186e0143fb7e3405cf2e5073bf008039e573c837f3bb86ed0753"
+    },
+    {
+      "query_id": "Q5",
+      "title": "Static Industrial Gas Flare Persistence Audit",
+      "row_count": 1,
+      "rows": [
+        {
+          "static_flare_detections": 0,
+          "flare_contamination_share": 0.0,
+          "persistent_cells_count": 0
+        }
+      ],
+      "sha256": "4f56292a3e56030e9604560c9e4c0bcd5d4d826db3e0b19d3c2605d0705fc5ee"
+    },
+    {
+      "query_id": "Q6",
+      "title": "2001-2020 Baseline Climatology & Focus Month Anomaly",
+      "row_count": 1,
+      "rows": [
+        {
+          "focus_year": 2026,
+          "focus_month": 3,
+          "focus_value": 18.2,
+          "hist_median": 13.66,
+          "hist_p95": 17.72,
+          "z_robust": 1.34,
+          "anomaly_pct": 33.2
+        }
+      ],
+      "sha256": "bba7a3470ad7b11cad2cb486cc85f5365bb72c1567431800277920df555808a3"
+    },
+    {
+      "query_id": "Q7",
+      "title": "Seasonal Peak & Out-of-Season Check",
+      "row_count": 1,
+      "rows": [
+        {
+          "peak_months": [
+            3,
+            4,
+            2
+          ],
+          "is_peak_season": true,
+          "rank_in_history": 1
+        }
+      ],
+      "sha256": "b3dc72cf2d7f9df897c38c36809b58d9c27250515f6f850634cd23a22a0afe9d"
+    },
+    {
+      "query_id": "Q8",
+      "title": "Multi-Decadal Trend & 2012 Continuity Bridge",
+      "row_count": 1,
+      "rows": [
+        {
+          "trend_slope_per_decade": -1.99,
+          "raw_step_jump_2012_pct": 275.0,
+          "harmonized_step_diff_2012_pct": -29.76,
+          "bias_reduction_pct": 89.18,
+          "bridge_r2": 0.961
+        }
+      ],
+      "sha256": "0fc26f9658351c389cfbe603b148e3190c2a90a37285319c83df11810f952955"
+    }
+  ],
+  "verdict": "ELEVATED_WATCH",
+  "deciding_rule": 3,
+  "findings": [
+    {
+      "rule": 3,
+      "verdict": "ELEVATED_WATCH",
+      "code": "above_median_activity",
+      "detail": "Mar 2026 activity (18.2) sits above the historical interquartile envelope (median 13.7, Z_robust = +1.34, +33.2%).",
+      "refs": [
+        "cell:2026-03",
+        "query:Q6"
+      ]
+    }
+  ],
+  "verdict_sha256": "1e7d7aaadc13c7313a5e121187f8cd57e2f0ce75866fc6832d4714554b906a35"
+}

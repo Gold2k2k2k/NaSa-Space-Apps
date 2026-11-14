@@ -129,7 +129,8 @@ omission on both sides of 2012, includes NOAA-21, and converts nominal local
 solar times to UTC. These times are synthetic, not orbital ephemerides.
 Fixture mission starts follow the FIRMS availability examples: MODIS
 2000-11-01, S-NPP 2012-01-20, NOAA-20 2018-04-01, NOAA-21 2024-01-17. S-NPP
-fixture delivery stops at 2026-11-02 13:00 UTC. This corrects impossible inputs
+fixture delivery stops at 2026-11-02 15:40 UTC, following NOAA's final update
+rather than the earlier 13:00 notice. This corrects impossible inputs
 without claiming the fixtures reproduce any real event. The six demo regimes
 and twelve trap scenarios remain passing after these corrections.
 
@@ -141,7 +142,7 @@ Sources checked November 14, 2026:
 - [FIRMS active-fire products and limitations](https://firms.modaps.eosdis.nasa.gov/content/active_fire/)
 - [USGS/LP DAAC sinusoidal projection documentation](https://lpdaac.usgs.gov/documents/2124/VNP64_User_Guide_v1.1.pdf)
 - [NOAA constellation spacing](https://www.nesdis.noaa.gov/news/noaa-21-operational)
-- [NOAA S-NPP delivery cessation notice](https://www.nesdis.noaa.gov/news/cessation-of-suomi-national-polar-orbiting-partnership-s-npp-data-users-onafter-november-2-2026)
+- [NOAA final S-NPP delivery cessation update](https://www.nesdis.noaa.gov/news/update-4-cessation-of-suomi-national-polar-orbiting-partnership-s-npp-data-users-november-02-2026-1540-utc-and-decommissioning-issued-november-2-2026-1800-utc)
 
 The core algorithms are original project code. These references supply product
 semantics and physical/model definitions, not copied implementations.

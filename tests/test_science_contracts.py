@@ -165,7 +165,7 @@ class TestGeneratedFixtureDates(unittest.TestCase):
         for row in rows:
             self.assertGreaterEqual(row["acq_date"], starts[row["satellite"]])
             if row["satellite"] == "N":
-                self.assertLess(row["acq_date"] + "T" + row["acq_time"], "2026-11-02T1300")
+                self.assertLess(row["acq_date"] + "T" + row["acq_time"], "2026-11-02T1540")
         terra = next(r for r in rows if r["satellite"] == "Terra" and r["daynight"] == "D")
         utc = int(terra["acq_time"][:2]) * 60 + int(terra["acq_time"][2:])
         self.assertLessEqual(abs((utc + terra["longitude"] * 4) % 1440 - 630), 1)

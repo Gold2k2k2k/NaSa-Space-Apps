@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Any, Literal, Optional
+from datetime import datetime
 
 from fastapi import Body, FastAPI, File, HTTPException, Query, Response, UploadFile
 from fastapi.responses import FileResponse, JSONResponse
@@ -317,19 +318,30 @@ def download_calendar_ics(run_id: str) -> Response:
 
 @app.get("/api/passes")
 def satellite_passes(
+    run_id: Optional[str] = Query(None),
     aoi_id: Optional[str] = Query(None),
-    lat: Optional[float] = Query(None),
-    lon: Optional[float] = Query(None),
+    lat: Optional[float] = Query(None, ge=-90, le=90, allow_inf_nan=False),
+    lon: Optional[float] = Query(None, ge=-180, le=180, allow_inf_nan=False),
     days: int = Query(5, ge=1, le=16),
+    reference_time: Optional[datetime] = Query(None),
 ) -> dict[str, Any]:
-    if aoi_id and aoi_id in AOIS:
+    if run_id is not None:
+        if any(value is not None for value in (aoi_id, lat, lon, reference_time)) or days != 5:
+            raise HTTPException(422, "A stored run supplies its own five-day schedule and reference")
+        snapshot = _get_run_or_404(run_id)
+        return {"run_id": run_id, "aoi_id": snapshot["aoi"]["aoi_id"], **snapshot["passes"]}
+    if aoi_id is not None:
+        if aoi_id not in AOIS:
+            raise HTTPException(422, "Unknown preset AOI")
+        if lat is not None or lon is not None:
+            raise HTTPException(422, "Choose a preset or coordinates")
         lat_v, lon_v = AOIS[aoi_id]["lat"], AOIS[aoi_id]["lon"]
     elif lat is not None and lon is not None:
         lat_v, lon_v = lat, lon
     else:
         raise HTTPException(status_code=422, detail="Provide aoi_id or lat and lon")
     try:
-        return {"aoi_id": aoi_id, **predict_passes(lat_v, lon_v, days=days)}
+        return {"aoi_id": aoi_id, **predict_passes(lat_v, lon_v, days=days, start_dt=reference_time)}
     except ValueError as err:
         raise HTTPException(status_code=422, detail=str(err)) from err
 

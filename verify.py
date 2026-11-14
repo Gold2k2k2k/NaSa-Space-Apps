@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import sys
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -22,6 +23,50 @@ from app.rules import RULES_VERSION
 from app import legacy_rules
 
 MAX_RECEIPT_BYTES = 20 * 1024 * 1024
+
+
+def _receipt_datetime(value):
+    if not isinstance(value, str):
+        raise ValueError("Snapshot times must be ISO timestamp strings")
+    stamp = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    if stamp.tzinfo is None:
+        raise ValueError("Snapshot times must include UTC offsets")
+    return stamp
+
+
+def _snapshot_problems(receipt, calendar):
+    problems = []
+    if "provenance" in receipt:
+        if not isinstance(receipt["provenance"], dict):
+            raise ValueError("Source provenance must be an object")
+        if receipt["provenance"].get("source_kind") != receipt["aoi"].get("source_kind"):
+            problems.append("source provenance disagrees with the AOI")
+    if "counterfactual" in receipt and sha256_of(receipt["counterfactual"]) != sha256_of(calendar.get("counterfactual")):
+        problems.append("counterfactual metadata disagrees with the full calendar")
+    if "passes" not in receipt:
+        return problems
+    passes = receipt["passes"]
+    if not isinstance(passes, dict) or not isinstance(passes.get("passes"), list):
+        raise ValueError("Modeled passes must be an object containing a passes array")
+    if passes.get("reference_time") != receipt.get("reference_time"):
+        problems.append("modeled pass reference disagrees with the snapshot")
+    days = passes.get("window_days")
+    if type(days) is not int or not 1 <= days <= 16:
+        raise ValueError("Modeled pass window must contain 1-16 days")
+    reference = _receipt_datetime(receipt.get("reference_time"))
+    window_end = reference + timedelta(days=days)
+    if _receipt_datetime(passes.get("window_end")) != window_end:
+        problems.append("modeled pass window end disagrees with its reference and duration")
+    if type(passes.get("pass_count")) is not int or passes["pass_count"] != len(passes["passes"]):
+        problems.append("modeled pass count disagrees with its rows")
+    for row in passes["passes"]:
+        if not isinstance(row, dict):
+            raise ValueError("Modeled pass rows must be objects")
+        begin = _receipt_datetime(row.get("utc_time"))
+        end = _receipt_datetime(row.get("end_utc"))
+        if not reference <= begin < end <= window_end:
+            problems.append("modeled pass lies outside its declared snapshot window")
+    return problems
 
 
 def check_receipt(receipt: dict[str, Any]) -> dict[str, Any]:
@@ -102,6 +147,7 @@ def check_receipt(receipt: dict[str, Any]) -> dict[str, Any]:
                 problems.append(f"calendar_summary.{key} disagrees with full calendar evidence")
         if sha256_of(calendar["cells"]) != cal_summary.get("cells_sha256"):
             problems.append("calendar cells_sha256 mismatch")
+        problems.extend(_snapshot_problems(receipt, calendar))
     else:
         # v1 did not carry full cells or independent source counts. Check every
         # available relationship, and identify that narrower scope in the result.

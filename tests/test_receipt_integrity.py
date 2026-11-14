@@ -29,7 +29,7 @@ class TestReceiptIntegrity(unittest.TestCase):
         self.assertEqual(check_receipt(receipt)["status"], "VALID")
 
     def test_committed_legacy_examples_use_their_frozen_rules(self):
-        paths = sorted((ROOT / "output_examples").glob("*receipt.json"))
+        paths = sorted((ROOT / "tests" / "fixtures" / "legacy_receipts").glob("*receipt.json"))
         self.assertGreaterEqual(len(paths), 3)
         for path in paths:
             with self.subTest(path=path.name):
@@ -43,6 +43,15 @@ class TestReceiptIntegrity(unittest.TestCase):
                                     capture_output=True, text=True, check=False)
         self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
         self.assertNotIn("Traceback", result.stdout + result.stderr)
+
+    def test_malformed_optional_snapshot_objects_are_controlled_errors(self):
+        for field, value in [("provenance", []), ("reference_time", None), ("passes", {"passes": []})]:
+            receipt = copy.deepcopy(self.receipt)
+            receipt[field] = value
+            receipt["receipt_sha256"] = sha256_of({k: v for k, v in receipt.items() if k != "receipt_sha256"})
+            with self.subTest(field=field):
+                with self.assertRaises(ValueError):
+                    check_receipt(receipt)
 
     def test_fixed_run_archive_does_not_depend_on_wall_clock(self) -> None:
         with patch("zipfile.time.localtime", return_value=(2026, 1, 1, 0, 0, 0, 3, 1, -1)):
@@ -136,6 +145,12 @@ class TestReceiptIntegrity(unittest.TestCase):
                         k: v for k, v in receipt.items() if k != "receipt_sha256"
                     })
                 self.assertEqual(check_receipt(receipt)["status"], "TAMPERED")
+
+    def test_rehashed_pass_reference_still_has_to_match_snapshot(self):
+        receipt = copy.deepcopy(self.receipt)
+        receipt["passes"]["reference_time"] = "2000-01-01T00:00:00Z"
+        receipt["receipt_sha256"] = sha256_of({k: v for k, v in receipt.items() if k != "receipt_sha256"})
+        self.assertEqual(check_receipt(receipt)["status"], "TAMPERED")
 
     def test_modified_receipt_cli_exits_one(self) -> None:
         receipt = copy.deepcopy(self.receipt)

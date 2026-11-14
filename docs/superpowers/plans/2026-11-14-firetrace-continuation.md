@@ -149,11 +149,11 @@ value: Any) -> dict`; bounded thread-safe run store with immutable snapshots.
 **Interfaces:** `predict_passes(lat, lon, *, days=5, start_dt=None) -> dict`;
 all existing export functions consume the same immutable analysis snapshot.
 
-- [ ] Add failing reference-time, date-rollover, coordinate, declared-window,
+- [x] Add failing reference-time, date-rollover, coordinate, declared-window,
   geometric-boundary, and deterministic archive tests.
-- [ ] Implement explicit snapshot references, documented approximate geometry,
+- [x] Implement explicit snapshot references, documented approximate geometry,
   model labels, and preserved data lineage in CSV/GeoJSON/ICS/JSON/ZIP outputs.
-- [ ] Test units, geometry, escaping, ZIP member contents, fixed-run byte equality,
+- [x] Test units, geometry, escaping, ZIP member contents, fixed-run byte equality,
   valid receipts, and every download against the actual API. Regenerate examples.
 
 ## Task 7: Tokenized, accessible five-view application
