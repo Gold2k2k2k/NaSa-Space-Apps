@@ -27,6 +27,35 @@ class AnalysisOptions(BaseModel):
         return self
 
 
+class AnalysisRequest(AnalysisOptions):
+    aoi_id: str | None = Field(default=None, max_length=80)
+    name: str | None = Field(default=None, max_length=255)
+    lat: float | None = Field(default=None, ge=-90, le=90)
+    lon: float | None = Field(default=None, ge=-180, le=180)
+    custom_lat: float | None = Field(default=None, ge=-90, le=90)
+    custom_lon: float | None = Field(default=None, ge=-180, le=180)
+    radius_km: float = Field(default=60, gt=0, le=2000)
+    geojson: dict[str, Any] | None = None
+    geometry: dict[str, Any] | None = None
+    polygon: list[Any] | None = None
+    reference_time: str | None = Field(default=None, max_length=40)
+
+    @model_validator(mode="after")
+    def validate_window(self) -> Self:
+        if self.year_start > self.year_end:
+            raise ValueError("year_start must not exceed year_end")
+        if "focus_year" in self.model_fields_set and not self.year_start <= self.focus_year <= self.year_end:
+            raise ValueError("focus_year must be inside the requested year window")
+        return self
+
+
+class WhatIfBody(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+    field: Literal["mode", "flare_guard", "focus_year", "focus_month", "focus_period",
+                   "confidence_min", "persona", "focus_to_median"]
+    value: Any
+
+
 def validate_options(request: dict[str, Any], aoi: dict[str, Any]) -> dict[str, Any]:
     options = {key: request[key] for key in AnalysisOptions.model_fields if key in request}
     if "focus_year" not in options:
@@ -38,3 +67,20 @@ def validate_options(request: dict[str, Any], aoi: dict[str, Any]) -> dict[str, 
             options["focus_year"] = min(end, max(start, aoi.get("default_focus_year", 2026)))
     options.setdefault("focus_month", aoi.get("default_focus_month", 9))
     return AnalysisOptions.model_validate(options).model_dump()
+
+
+def counterfactual_options(options, field, value):
+    """Validate actual values rather than coercing typos and strings to choices."""
+    updated = dict(options)
+    if field == "focus_period":
+        if not isinstance(value, (list, tuple)) or len(value) != 2:
+            raise ValueError("focus_period must contain [year, month]")
+        updated["focus_year"], updated["focus_month"] = value
+    elif field in ("mode", "flare_guard", "focus_year", "focus_month", "confidence_min", "persona"):
+        updated[field] = value
+    elif field == "focus_to_median":
+        if value is not True:
+            raise ValueError("focus_to_median requires the boolean true")
+    else:
+        raise ValueError(f"Unsupported what_if field: {field!r}")
+    return AnalysisOptions.model_validate(updated).model_dump()

@@ -102,6 +102,26 @@ establish crown fire or continuous burning. All verdict names are demo labels.
 Frozen `.1` rules exist solely to verify earlier receipts with their original
 hash, scope and limitations; they are not used for new analyses.
 
+## Counterfactual snapshots
+
+Every analysis has a content-derived ID binding geometry, retained source rows,
+options, calculation source digest, reference time and lineage. Changing a
+parameter creates a new snapshot. A focus-to-median experiment is explicitly a
+hypothetical **metric**: reference climatology and observed raw counts, HHE, FRP
+and source records stay fixed. The modeled cell value, annual metric sum/trend,
+rank, focus dekad profile and query evidence are rebuilt together. Where a
+zero observed total prevents a defined dekad allocation, that modeled profile
+is missing. A scenario is neither an observed detection archive nor new evidence.
+
+The snapshot reference defaults to the fixed demo instant 2026-11-14T00:00:00Z
+and can be supplied explicitly with a UTC offset. Trace timestamps identify that
+reference, not execution time. Run/receipt/package equality is reproducible
+across processes for the same canonical inputs, code, reference and documentation.
+The local cache copies snapshots on both sides, rejects ID collisions, and
+evicts least recently used entries above 16 snapshots or 64 MiB of serialized
+content. Cache eviction or a server restart makes a run unavailable; save its
+receipt and audit ZIP for durable evidence.
+
 ## Fixture dates and primary references
 
 The generator removes pre-November-2000 MODIS records, preserves small-fire

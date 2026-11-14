@@ -130,15 +130,15 @@ summaries. `decide(evidence: dict) -> dict` remains deterministic.
 raw_records_override=None) -> dict`; `apply_what_if(run_state: dict, field: str,
 value: Any) -> dict`; bounded thread-safe run store with immutable snapshots.
 
-- [ ] Write failing tests for polygon/CSV preservation through every toggle,
+- [x] Write failing tests for polygon/CSV preservation through every toggle,
   median-counterfactual receipt validity, distinct upload/state IDs, same-input
   cross-process equality, and wrong combined-CSV sensor query counts.
-- [ ] Repair state construction around canonical inputs and rebuild all derived
+- [x] Repair state construction around canonical inputs and rebuild all derived
   evidence together. Preserve source records and return new content-bound states.
-- [ ] Write actual HTTP boundary tests: malformed JSON/query/what-if values return
+- [x] Write actual HTTP boundary tests: malformed JSON/query/what-if values return
   422, upload limits reject safely, run snapshots survive unrelated requests,
   exports match state, and expected not-found behavior is 404.
-- [ ] Exercise concurrent cache reads/writes and expanded CLI inputs. Run both
+- [x] Exercise concurrent cache reads/writes and expanded CLI inputs. Run both
   targeted suites plus the existing complete API workflow.
 
 ## Task 6: Satellite references and all exports

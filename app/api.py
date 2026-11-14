@@ -2,15 +2,19 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Literal, Optional
 
 from fastapi import Body, FastAPI, File, HTTPException, Query, Response, UploadFile
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
+from fastapi.exceptions import RequestValidationError
+from starlette.concurrency import run_in_threadpool
 
 from app.agents import PERSONAS, apply_what_if, run_investigation
-from app.datasets import AOIS, list_aois, parse_uploaded_csv
+from app.datasets import AOIS, MAX_CSV_BYTES, list_aois, parse_uploaded_csv
+from app.http_limits import BodyLimits
+from app.models import AnalysisRequest, WhatIfBody
+from app.run_store import RunStore, SnapshotConflict, SnapshotLimit
 from app.exports import (
     export_calendar_csv,
     export_calendar_ics,
@@ -23,8 +27,7 @@ from app.rules import RULES_VERSION
 from app.schema_mapping import get_manifesto
 
 STATIC_DIR = Path(__file__).resolve().parent / "web" / "static"
-RUNS: dict[str, dict[str, Any]] = {}
-MAX_RUNS_CACHED = 64
+RUNS = RunStore()
 
 COLOR_RAMPS = [
     {"id": "viridis", "name": "Viridis (Perceptual, Colorblind-Safe)"},
@@ -129,18 +132,24 @@ BENCH_CASES: list[dict[str, Any]] = [
 ]
 
 app = FastAPI(title="FireTrace", version="1.0.0")
+app.add_middleware(BodyLimits)
 
 
-class WhatIfBody(BaseModel):
-    field: str
-    value: Any
+@app.exception_handler(RequestValidationError)
+async def request_validation_error(request, error):
+    # Echo locations and reasons, not arbitrary non-finite/deep submitted values.
+    detail = [{"loc": item["loc"], "msg": item["msg"], "type": item["type"]}
+              for item in error.errors()]
+    return JSONResponse({"detail": detail}, status_code=422)
 
 
 def _store_run(run_data: dict[str, Any]) -> None:
-    if len(RUNS) >= MAX_RUNS_CACHED:
-        oldest = next(iter(RUNS))
-        RUNS.pop(oldest, None)
-    RUNS[run_data["run_id"]] = run_data
+    try:
+        RUNS.put(run_data)
+    except SnapshotConflict as error:
+        raise HTTPException(409, str(error)) from error
+    except SnapshotLimit as error:
+        raise HTTPException(413, str(error)) from error
 
 
 def _public_run(run_data: dict[str, Any]) -> dict[str, Any]:
@@ -186,9 +195,9 @@ def schema_mapping() -> dict[str, Any]:
 
 @app.post("/api/analyze")
 @app.post("/run")
-def analyze(request: dict[str, Any] = Body(...)) -> dict[str, Any]:
+def analyze(request: AnalysisRequest) -> dict[str, Any]:
     try:
-        run_data = run_investigation(request)
+        run_data = run_investigation(request.model_dump(exclude_unset=True))
     except ValueError as err:
         raise HTTPException(status_code=422, detail=str(err)) from err
     _store_run(run_data)
@@ -198,32 +207,37 @@ def analyze(request: dict[str, Any] = Body(...)) -> dict[str, Any]:
 @app.post("/api/upload-csv")
 async def upload_csv(
     file: UploadFile = File(...),
-    focus_year: Optional[int] = Query(None),
-    focus_month: Optional[int] = Query(None),
-    mode: str = Query("harmonized"),
+    focus_year: Optional[int] = Query(None, ge=2000, le=2026),
+    focus_month: Optional[int] = Query(None, ge=1, le=12),
+    mode: Literal["harmonized", "raw"] = Query("harmonized"),
     flare_guard: bool = Query(True),
-    persona: str = Query("responder"),
+    persona: Literal["responder", "scientist", "land_manager", "firefighter"] = Query("responder"),
+    confidence_min: Literal["low", "nominal", "high"] = Query("low"),
 ) -> dict[str, Any]:
-    raw_bytes = await file.read()
+    raw_bytes = await file.read(MAX_CSV_BYTES + 1)
+    await file.close()
+    if len(raw_bytes) > MAX_CSV_BYTES:
+        raise HTTPException(413, "Uploaded CSV exceeds the 10 MiB limit")
     try:
         csv_text = raw_bytes.decode("utf-8-sig")
-        records, aoi = parse_uploaded_csv(csv_text, name=file.filename)
+        records, aoi = await run_in_threadpool(parse_uploaded_csv, csv_text, name=file.filename)
     except (UnicodeDecodeError, ValueError) as err:
         raise HTTPException(status_code=422, detail=str(err)) from err
 
     req = {
         "name": aoi["name"],
-        "geojson": {"type": "Polygon", "coordinates": [aoi["polygon"]]},
-        "focus_year": focus_year or aoi["default_focus_year"],
-        "focus_month": focus_month or aoi["default_focus_month"],
+        "focus_year": focus_year if focus_year is not None else aoi["default_focus_year"],
+        "focus_month": focus_month if focus_month is not None else aoi["default_focus_month"],
         "mode": mode,
         "flare_guard": flare_guard,
         "persona": persona,
+        "confidence_min": confidence_min,
     }
-    run_data = run_investigation(req, raw_records_override=records)
-    run_data["aoi"]["name"] = aoi["name"]
-    run_data["aoi"]["country"] = "Uploaded FIRMS CSV"
-    _store_run(run_data)
+    try:
+        run_data = await run_in_threadpool(run_investigation, req, raw_records_override=records, source_aoi=aoi)
+    except ValueError as error:
+        raise HTTPException(422, str(error)) from error
+    await run_in_threadpool(_store_run, run_data)
     return _public_run(run_data)
 
 

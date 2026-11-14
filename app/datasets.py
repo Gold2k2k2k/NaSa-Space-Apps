@@ -391,13 +391,13 @@ def generate_firms_records(
         # Natural interannual climate oscillation (ENSO-like deterministic cycle)
         enso = 1.0 + 0.14 * math.sin((yr - 2000) * 1.15 + (aoi["lon"] * 0.02))
         trend_mult = max(0.6, 1.0 + trend * (yr - 2000))
-        yr_shocks = shocks.get(yr, {})
+        yr_shocks = shocks.get(yr, shocks.get(str(yr), {}))
         max_month = 11 if yr == 2026 else 12
 
         for mo in range(1, max_month + 1):
             if yr == 2000 and mo < 11:
                 continue
-            shock = yr_shocks.get(mo, 1.0)
+            shock = yr_shocks.get(mo, yr_shocks.get(str(mo), 1.0))
             w = weights[mo - 1]
             # Expected true physical 1 km fire activity units before sensor split
             true_events = max(1, int(round(base_scale * w * enso * trend_mult * shock * rng.uniform(0.86, 1.14))))

@@ -7,6 +7,7 @@ verdict, and computes live counterfactual What-If flips.
 from __future__ import annotations
 
 import copy
+import json
 from datetime import datetime, timezone
 from typing import Any, Optional
 
@@ -15,8 +16,11 @@ from app.canonical import sha256_of
 from app.datasets import generate_firms_records, parse_custom_aoi
 from app.evidence import QUERY_TITLES, expected_query_rows, summarize_inputs
 from app.harmonize import harmonize_records
-from app.models import validate_options
+from app.models import counterfactual_options, validate_options
 from app.rules import decide
+from app.run_state import (CALCULATION_VERSION, DEMO_REFERENCE, apply_calendar_scenario,
+                           calculation_digest, content_run_id)
+from app.canonical import canonical_json
 
 PERSONAS = {
     "responder": "Early Warning & Emergency Responder",
@@ -27,7 +31,7 @@ PERSONAS = {
 
 
 def _now_iso() -> str:
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+    return DEMO_REFERENCE
 
 
 def _trace_line(
@@ -42,7 +46,8 @@ def _trace_line(
     rows: int = 0,
 ) -> dict[str, Any]:
     return {
-        "timestamp": _now_iso(),
+        "timestamp": DEMO_REFERENCE,
+        "timestamp_semantics": "snapshot_reference_not_execution_time",
         "run_id": run_id,
         "agent_name": agent_name,
         "action": action,
@@ -133,6 +138,7 @@ def _compute_what_ifs(
     options: dict[str, Any],
     base_decision: dict[str, Any],
     raw_records: list[dict[str, Any]],
+    scenario: bool = False,
 ) -> dict[str, Any]:
     """Evaluate key counterfactual experiments so the user can test what flips the verdict."""
     mode = options.get("mode", "harmonized")
@@ -146,6 +152,8 @@ def _compute_what_ifs(
         focus_month=options["focus_month"],
         mode=alt_mode,
     )
+    if scenario and alt_cal["focus_comparison"]["hist_median"] is not None:
+        apply_calendar_scenario(alt_cal)
     alt_mode_dec = decide({"aoi": aoi, "calendar": alt_cal, "sensor_calibration_audit": harmonized["sensor_calibration_audit"], "options": options})
 
     # Counterfactual 2: toggle flare_guard (only needs re-harmonizing when flares exist in the AOI)
@@ -164,6 +172,8 @@ def _compute_what_ifs(
             focus_month=options["focus_month"],
             mode=mode,
         )
+        if scenario and alt_cal_flare["focus_comparison"]["hist_median"] is not None:
+            apply_calendar_scenario(alt_cal_flare)
         alt_flare_dec = decide({
             "aoi": aoi,
             "calendar": alt_cal_flare,
@@ -182,12 +192,9 @@ def _compute_what_ifs(
         focus_month=options["focus_month"],
         mode=mode,
     ))
-    med_focus = med_cal["focus_comparison"]
-    med_focus["value"] = med_focus["hist_median"]
-    med_focus["anomaly_abs"] = 0.0
-    med_focus["anomaly_pct"] = 0.0
-    med_focus["z_robust"] = 0.0
-    med_focus["night_share"] = min(0.25, med_focus["night_share"]) if med_focus["night_share"] is not None else None
+    median_available = all(med_cal["focus_comparison"][key] is not None for key in ("value", "hist_median"))
+    if median_available:
+        apply_calendar_scenario(med_cal)
     med_dec = decide({
         "aoi": aoi,
         "calendar": med_cal,
@@ -204,7 +211,8 @@ def _compute_what_ifs(
             "verdict_before": base_decision["verdict"],
             "verdict_after": alt_mode_dec["verdict"],
             "flips_verdict": alt_mode_dec["verdict"] != base_decision["verdict"],
-            "z_before": build_burning_calendar(harmonized, aoi, year_start=options["year_start"], year_end=options["year_end"], focus_year=options["focus_year"], focus_month=options["focus_month"], mode=mode)["focus_comparison"]["z_robust"],
+            "z_before": 0.0 if scenario else build_burning_calendar(harmonized, aoi, year_start=options["year_start"], year_end=options["year_end"], focus_year=options["focus_year"], focus_month=options["focus_month"], mode=mode)["focus_comparison"]["z_robust"],
+            "z_after": alt_cal["focus_comparison"]["z_robust"],
         },
         {
             "id": "toggle_flare_guard",
@@ -217,9 +225,10 @@ def _compute_what_ifs(
         },
         {
             "id": "reset_focus_to_median",
-            "label": "Normalize focus month activity to 2001–2020 historical median",
+            "label": "Model focus metric at the historical median (observations unchanged)",
             "field": "focus_to_median",
             "value": True,
+            "available": median_available,
             "verdict_before": base_decision["verdict"],
             "verdict_after": med_dec["verdict"],
             "flips_verdict": med_dec["verdict"] != base_decision["verdict"],
@@ -236,22 +245,42 @@ def run_investigation(
     *,
     run_id: Optional[str] = None,
     raw_records_override: Optional[list[dict[str, Any]]] = None,
+    source_aoi: Optional[dict[str, Any]] = None,
+    scenario: bool = False,
+    lineage: Optional[dict[str, Any]] = None,
 ) -> dict[str, Any]:
     """Execute the full 5-agent investigation and return the complete structured output."""
-    aoi = parse_custom_aoi(request)
+    aoi = copy.deepcopy(source_aoi) if source_aoi is not None else parse_custom_aoi(request)
+    # Internal preset shock maps use integer years; snapshots are strict JSON.
+    aoi = json.loads(json.dumps(aoi, allow_nan=False))
     options = validate_options(request, aoi)
-    aoi["source_kind"] = "generated_demo" if raw_records_override is None else request.get("source_kind", "provided_records")
+    aoi["source_kind"] = aoi.get("source_kind", "uploaded_csv" if aoi.get("is_uploaded_csv") else "generated_demo" if raw_records_override is None else "provided_records")
     aoi["complete_periods"] = ([(y, m) for y in range(2000, 2027) for m in range(1, 13)
                               if (2000, 11) <= (y, m) <= (2026, 11)]
-                              if aoi["source_kind"] == "generated_demo" else request.get("complete_periods", []))
+                              if aoi["source_kind"] == "generated_demo" else aoi.get("complete_periods", []))
     year_start, year_end = options["year_start"], options["year_end"]
     focus_year, focus_month = options["focus_year"], options["focus_month"]
     mode, flare_guard = options["mode"], options["flare_guard"]
     confidence_min, persona = options["confidence_min"], options["persona"]
 
-    if not run_id:
-        seed_id = sha256_of({"aoi": aoi["aoi_id"], "options": options})[:10]
-        run_id = f"ft-{seed_id}"
+    reference = request.get("reference_time", DEMO_REFERENCE)
+    try:
+        stamp = datetime.fromisoformat(reference.replace("Z", "+00:00"))
+        if stamp.tzinfo is None:
+            raise ValueError("reference_time must include a UTC offset")
+        reference = stamp.astimezone(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    except (AttributeError, TypeError, ValueError) as error:
+        raise ValueError("reference_time must be an ISO timestamp with a UTC offset") from error
+    if raw_records_override is not None and (not isinstance(raw_records_override, list) or (len(raw_records_override) > 25000 and aoi["source_kind"] != "generated_demo")):
+        raise ValueError("Provided records must be an array of at most 25,000 rows")
+    raw_records = copy.deepcopy(raw_records_override) if raw_records_override is not None else generate_firms_records(aoi, year_start=2000, year_end=2026)
+    input_summary = summarize_inputs(raw_records)
+    source_digest = sha256_of(sorted(raw_records, key=canonical_json))
+    calculation = calculation_digest()
+    derived_id = content_run_id(aoi, options, input_summary, source_digest, reference, scenario, lineage, calculation)
+    if run_id is not None and run_id != derived_id:
+        raise ValueError("run_id is content-derived and cannot be overridden")
+    run_id = derived_id
 
     trace: list[dict[str, Any]] = []
 
@@ -272,7 +301,6 @@ def run_investigation(
     ))
 
     # 3. Investigator
-    raw_records = raw_records_override if raw_records_override is not None else generate_firms_records(aoi, year_start=2000, year_end=2026)
     harmonized = harmonize_records(
         raw_records,
         aoi,
@@ -291,8 +319,10 @@ def run_investigation(
         focus_year=focus_year, focus_month=focus_month,
         mode="raw",
     )
+    if scenario:
+        apply_calendar_scenario(calendar_harm)
+        apply_calendar_scenario(calendar_raw)
     active_calendar = calendar_raw if mode == "raw" else calendar_harm
-    input_summary = summarize_inputs(raw_records)
     queries = _build_query_tables(aoi, raw_records, harmonized, active_calendar, input_summary)
 
     trace.append(_trace_line(
@@ -323,7 +353,7 @@ def run_investigation(
         "options": options,
     }
     decision = decide(evidence)
-    what_if = _compute_what_ifs(harmonized, aoi, options, decision, raw_records)
+    what_if = _compute_what_ifs(harmonized, aoi, options, decision, raw_records, scenario)
     briefing = _persona_briefing(persona, aoi, active_calendar, decision, harmonized["sensor_calibration_audit"])
 
     trace.append(_trace_line(
@@ -339,10 +369,22 @@ def run_investigation(
     other_spots = [h for h in hotspots if not (h["year"] == active_calendar["focus_year"] and h["month"] == active_calendar["focus_month"])]
     step = max(1, len(other_spots) // 250)
     map_hotspots = (focus_spots[:220] + other_spots[::step][:230])[:450]
+    for step_record in trace:
+        step_record["timestamp"] = reference
 
     return {
         "run_id": run_id,
         "status": "success",
+        "reference_time": reference,
+        "calculation_version": CALCULATION_VERSION,
+        "calculation_sha256": calculation,
+        "provenance": {"source_kind": aoi["source_kind"], "source_records_sha256": source_digest,
+                       "fixture_version": "generated-demo-v2" if aoi["source_kind"] == "generated_demo" else None,
+                       "coverage_claim": "simulated_complete_periods" if aoi["source_kind"] == "generated_demo" else "records_only",
+                       "source_authentication": "not established"},
+        "ingestion": copy.deepcopy(aoi.get("ingestion")),
+        "lineage": copy.deepcopy(lineage),
+        "counterfactual": copy.deepcopy(active_calendar.get("counterfactual")),
         "aoi": {
             "aoi_id": aoi["aoi_id"],
             "name": aoi["name"],
@@ -382,70 +424,23 @@ def run_investigation(
         "map_hotspots": map_hotspots,
         "_hotspots_all": hotspots,
         "_raw_records_count": len(raw_records),
-        "_raw_records": raw_records_override,
+        "_raw_records": raw_records,
+        "_aoi_full": aoi,
+        "_scenario": scenario,
         "_input_summary": input_summary,
         "_persistent_cells_count": len(harmonized["persistent_flare_cells"]),
     }
 
 
-def apply_what_if(
-    run_state: dict[str, Any],
-    field: str,
-    value: Any,
-) -> dict[str, Any]:
-    """Re-run the pipeline cleanly with a single counterfactual parameter updated."""
-    opts = dict(run_state["options"])
-    if field == "mode":
-        opts["mode"] = "raw" if str(value) == "raw" else "harmonized"
-    elif field == "flare_guard":
-        opts["flare_guard"] = bool(value)
-    elif field == "focus_year":
-        opts["focus_year"] = int(value)
-    elif field == "focus_month":
-        opts["focus_month"] = int(value)
-    elif field == "focus_period":
-        opts["focus_year"] = int(value[0])
-        opts["focus_month"] = int(value[1])
-    elif field == "confidence_min":
-        opts["confidence_min"] = str(value).lower()
-    elif field == "persona":
-        opts["persona"] = str(value).lower()
-    elif field == "focus_to_median":
-        updated = copy.deepcopy(run_state)
-        cal = updated["calendar"]
-        fc = cal["focus_comparison"]
-        fc["value"] = fc["hist_median"]
-        fc["anomaly_abs"] = 0.0
-        fc["anomaly_pct"] = 0.0
-        fc["z_robust"] = 0.0
-        fc["night_share"] = min(0.25, fc["night_share"])
-        dec = decide({
-            "aoi": updated["aoi"],
-            "calendar": cal,
-            "sensor_calibration_audit": updated["sensor_calibration_audit"],
-            "options": opts,
-        })
-        updated["verdict"] = dec["verdict"]
-        updated["deciding_rule"] = dec["deciding_rule"]
-        updated["verdict_sha256"] = dec["verdict_sha256"]
-        updated["findings"] = dec["findings"]
-        updated["briefing"] = _persona_briefing(opts["persona"], updated["aoi"], cal, dec, updated["sensor_calibration_audit"])
-        updated["what_if_applied"] = {"field": field, "value": value, "verdict_before": run_state["verdict"], "verdict_after": dec["verdict"]}
-        return updated
-    else:
-        raise ValueError(f"Unsupported what_if field: {field!r}")
-
-    req = {**run_state["aoi"], **opts}
-    new_run = run_investigation(
-        req,
-        run_id=run_state["run_id"],
-        raw_records_override=run_state.get("_raw_records"),
-    )
-    new_run["what_if_applied"] = {
-        "field": field,
-        "value": value,
-        "verdict_before": run_state["verdict"],
-        "verdict_after": new_run["verdict"],
-    }
-    return new_run
-
+def apply_what_if(run_state: dict[str, Any], field: str, value: Any) -> dict[str, Any]:
+    """Construct a new content-bound snapshot; the parent is never mutated."""
+    options = counterfactual_options(run_state["options"], field, value)
+    scenario = run_state.get("_scenario", False) or field == "focus_to_median"
+    lineage = {"parent_run_id": run_state["run_id"], "field": field, "value": copy.deepcopy(value),
+               "verdict_before": run_state["verdict"]}
+    request = {**options, "reference_time": run_state["reference_time"]}
+    updated = run_investigation(request, source_aoi=run_state["_aoi_full"],
+                                raw_records_override=run_state["_raw_records"],
+                                scenario=scenario, lineage=lineage)
+    updated["what_if_applied"] = {**lineage, "verdict_after": updated["verdict"]}
+    return updated
