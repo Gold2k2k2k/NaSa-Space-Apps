@@ -1,0 +1,391 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>FireTrace · Harmonized MODIS &amp; VIIRS Burning Calendar</title>
+  <link rel="icon" href="/static/mark.svg" type="image/svg+xml">
+  <link rel="preload" href="/static/fonts/Geist-Variable.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/static/app.css">
+  <script src="/static/app.js" defer></script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to workspace</a>
+
+  <header class="bar">
+    <div class="bar-in">
+      <a class="brand" href="#/">
+        <img src="/static/mark.svg" width="28" height="28" alt="">
+        <span>FireTrace</span>
+      </a>
+      <nav class="tabs" aria-label="Primary Views">
+        <a id="tab-calendar" href="#/">Burning Calendar</a>
+        <a id="tab-bridge" href="#/bridge">Sensor Bridge</a>
+        <a id="tab-audit" href="#/audit">Evaluator &amp; Receipt</a>
+        <a id="tab-manifesto" href="#/manifesto">Schema Manifesto</a>
+        <a id="tab-bench" href="#/bench">Trap Bench</a>
+      </nav>
+      <div class="bar-end">
+        <label class="ramp-picker" for="ramp-select">
+          <span class="sub">Ramp</span>
+          <select id="ramp-select" aria-label="Accessible Color Ramp"></select>
+        </label>
+        <label class="ramp-picker" for="persona-select">
+          <span class="sub">Audience</span>
+          <select id="persona-select" aria-label="Target Audience Lens"></select>
+        </label>
+      </div>
+    </div>
+  </header>
+
+  <main id="main" tabindex="-1">
+    <!-- Top Workspace Control Strip (Always visible on primary views) -->
+    <section class="panel control-deck" id="control-deck" aria-label="Region & Date Controls">
+      <div class="deck-top">
+        <div class="stack-8">
+          <span class="eyebrow eyebrow-signal">NASA Space Apps 2026 · MODIS C6.1 + VIIRS S-NPP / NOAA-20 / NOAA-21 Harmonization</span>
+          <h1 class="h-hero" id="aoi-heading">Harmonized Burning Activity Calendar (2000–2026)</h1>
+        </div>
+        <div class="deck-status">
+          <span class="mono sub" id="run-seal-pill"></span>
+          <span class="tag" id="hero-verdict-tag">READY</span>
+        </div>
+      </div>
+
+      <div class="preset-row" id="preset-row" role="group" aria-label="Benchmark Areas of Interest"></div>
+
+      <form class="query-bar" id="query-form">
+        <label class="field">
+          <span class="sub">Latitude</span>
+          <input type="number" step="0.01" min="-90" max="90" id="in-lat" required>
+        </label>
+        <label class="field">
+          <span class="sub">Longitude</span>
+          <input type="number" step="0.01" min="-180" max="180" id="in-lon" required>
+        </label>
+        <label class="field">
+          <span class="sub">Radius (km)</span>
+          <input type="number" step="5" min="10" max="250" id="in-radius" value="100">
+        </label>
+        <label class="field">
+          <span class="sub">Start Year</span>
+          <input type="number" min="2000" max="2025" id="in-y0" value="2000">
+        </label>
+        <label class="field">
+          <span class="sub">End Year</span>
+          <input type="number" min="2001" max="2026" id="in-y1" value="2026">
+        </label>
+        <label class="field">
+          <span class="sub">Focus Year</span>
+          <input type="number" min="2000" max="2026" id="in-fy" value="2026">
+        </label>
+        <label class="field">
+          <span class="sub">Focus Month</span>
+          <select id="in-fm"></select>
+        </label>
+        <label class="field">
+          <span class="sub">Confidence</span>
+          <select id="in-conf">
+            <option value="low">All (Low+)</option>
+            <option value="nominal">Nominal+</option>
+            <option value="high">High Only</option>
+          </select>
+        </label>
+        <div class="query-actions">
+          <button type="submit" class="btn btn-go" id="btn-analyze">Analyze Region</button>
+          <button type="button" class="btn" id="btn-upload-trigger">Upload FIRMS CSV</button>
+          <input type="file" id="csv-file-input" accept=".csv,.txt,text/csv" hidden>
+        </div>
+      </form>
+      <p class="small muted" id="aoi-description"></p>
+      <p class="error" id="global-error" hidden></p>
+    </section>
+
+    <!-- VIEW 1: BURNING CALENDAR & AOI MAP -->
+    <div id="view-calendar" class="view stack-24">
+      <!-- Briefing & 4 Key KPIs -->
+      <section class="briefing-grid">
+        <article class="panel card briefing-card">
+          <div class="card-head">
+            <span class="eyebrow" id="briefing-role-label">Early Warning &amp; Emergency Responder</span>
+            <span class="mono sub" id="briefing-rules-ver"></span>
+          </div>
+          <h2 class="h-brief" id="briefing-headline">Loading harmonization engine...</h2>
+          <ul class="bullet-list" id="briefing-actions"></ul>
+          <div class="findings-list" id="findings-list"></div>
+        </article>
+
+        <div class="kpi-grid" id="kpi-grid">
+          <div class="panel kpi">
+            <span class="sub">Focus vs. 2001–2020 Median</span>
+            <strong class="kpi-val mono" id="kpi-focus-val">--</strong>
+            <span class="small" id="kpi-focus-sub">--</span>
+          </div>
+          <div class="panel kpi">
+            <span class="sub">Robust Anomaly (Z / Rank)</span>
+            <strong class="kpi-val mono" id="kpi-z-val">--</strong>
+            <span class="small" id="kpi-z-sub">--</span>
+          </div>
+          <div class="panel kpi">
+            <span class="sub">2012 Bridge Bias Reduction</span>
+            <strong class="kpi-val mono" id="kpi-bias-val">--</strong>
+            <span class="small" id="kpi-bias-sub">--</span>
+          </div>
+          <div class="panel kpi">
+            <span class="sub">Nocturnal Share &amp; Radiative Power</span>
+            <strong class="kpi-val mono" id="kpi-frp-val">--</strong>
+            <span class="small" id="kpi-frp-sub">--</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Calendar + Interactive AOI Map Split -->
+      <section class="workspace-split">
+        <!-- Burning Activity Calendar Card -->
+        <article class="panel card calendar-card">
+          <div class="card-head wrap-head">
+            <div class="stack-4">
+              <span class="eyebrow eyebrow-signal">2000–2026 Burning Activity Calendar</span>
+              <h2 class="h-card" id="cal-title">Harmonized Hotspot Equivalents (HHE) by Year &amp; Month</h2>
+            </div>
+            <div class="switch-row">
+              <button type="button" class="btn btn-sm" id="btn-toggle-granularity">View: Monthly Matrix</button>
+              <button type="button" class="switch-pill" id="btn-toggle-mode" role="switch" aria-checked="true">
+                <span class="switch-dot"></span>
+                <span id="mode-switch-label">Mode: Harmonized (HHE)</span>
+              </button>
+              <button type="button" class="switch-pill" id="btn-toggle-flare" role="switch" aria-checked="true">
+                <span class="switch-dot"></span>
+                <span id="flare-switch-label">Flare Filter: ON</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="ramp-legend" id="ramp-legend"></div>
+
+          <div class="calendar-scroll" id="calendar-container"></div>
+
+          <div class="cell-inspector mono" id="cell-inspector">
+            Click any cell to inspect or set as Focus Month. Hover for MODIS/VIIRS breakdown, historical median, and Z_robust.
+          </div>
+        </article>
+
+        <!-- Interactive AOI Spatial Map Card -->
+        <article class="panel card map-card">
+          <div class="card-head wrap-head">
+            <div class="stack-4">
+              <span class="eyebrow">1 km Equal-Area Grid &amp; AOI Boundary</span>
+              <h2 class="h-card" id="map-card-title">Spatial Hotspot Distribution</h2>
+            </div>
+            <div class="map-btn-row">
+              <button type="button" class="btn btn-sm" id="btn-draw-mode" aria-pressed="false">Draw Polygon</button>
+              <button type="button" class="btn btn-sm" id="btn-draw-undo" hidden>Undo</button>
+              <button type="button" class="btn btn-sm" id="btn-draw-apply" hidden>Run Drawn AOI</button>
+            </div>
+          </div>
+          <div class="map-viewport" id="map-viewport"></div>
+          <div class="map-legend-row small muted">
+            <span><i class="dot dot-modis"></i> MODIS 1 km</span>
+            <span><i class="dot dot-viirs"></i> VIIRS 375 m</span>
+            <span><i class="dot dot-both"></i> Co-detected (Deduped)</span>
+            <span><i class="dot dot-flare"></i> Static Flare</span>
+          </div>
+          <p class="mono sub" id="map-hover-readout">Hover over a hotspot cell or click "Draw Polygon" to sketch a custom boundary.</p>
+        </article>
+      </section>
+
+      <!-- Seasonal Climatology Fan + Attribution & Overpass Predictions -->
+      <section class="analytics-grid">
+        <article class="panel card">
+          <div class="card-head">
+            <div class="stack-4">
+              <span class="eyebrow">Seasonal Climatology Envelope</span>
+              <h2 class="h-card" id="season-chart-title">Focus Year vs. 2001–2020 Historical Median, IQR &amp; P95</h2>
+            </div>
+          </div>
+          <div class="svg-box" id="season-chart-box"></div>
+        </article>
+
+        <article class="panel card">
+          <div class="card-head">
+            <div class="stack-4">
+              <span class="eyebrow">Fire Regime Attribution &amp; Upcoming Satellites</span>
+              <h2 class="h-card">Wildfire vs. Agricultural Burns &amp; Next Overpasses</h2>
+            </div>
+          </div>
+          <div class="attribution-bars" id="attribution-bars"></div>
+          <div class="passes-wrap">
+            <h3 class="sub" style="margin:0 0 8px">Next MODIS &amp; VIIRS Overpasses (Terra, Aqua, S-NPP, NOAA-20/21)</h3>
+            <div class="table-scroll">
+              <table class="data-table mono" id="passes-table">
+                <thead>
+                  <tr><th>Satellite</th><th>Sensor</th><th>UTC Time</th><th>Pass</th><th>Max Elev</th></tr>
+                </thead>
+                <tbody id="passes-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <!-- Exports & Downloads Bar -->
+      <section class="panel export-bar" aria-label="Downloadable Outputs">
+        <div class="stack-4">
+          <span class="eyebrow eyebrow-signal">Export Analytics &amp; Cryptographic Evidence</span>
+          <p class="small muted">Download sensor-harmonized hotspots, the 27-year calendar matrix, GIS GeoJSON, satellite pass .ics, or the full offline-verifiable audit zip.</p>
+        </div>
+        <div class="export-actions">
+          <a class="btn" id="dl-hotspots-csv" download>Hotspots CSV</a>
+          <a class="btn" id="dl-calendar-csv" download>Calendar CSV</a>
+          <a class="btn" id="dl-geojson" download>Hotspots GeoJSON</a>
+          <a class="btn" id="dl-ics" download>Watch Calendar .ics</a>
+          <a class="btn" id="dl-receipt" download>Receipt JSON</a>
+          <a class="btn btn-go" id="dl-package" download>Download Audit ZIP</a>
+        </div>
+      </section>
+    </div>
+
+    <!-- VIEW 2: SENSOR HARMONIZATION BRIDGE -->
+    <div id="view-bridge" class="view stack-24" hidden>
+      <section class="panel card">
+        <div class="card-head wrap-head">
+          <div class="stack-4">
+            <span class="eyebrow eyebrow-signal">2000–2026 Cross-Sensor Continuity Bridge</span>
+            <h2 class="h-section" style="font-size:28px">Eliminating the 2012 &amp; 2018 VIIRS Resolution Step-Jump</h2>
+          </div>
+          <span class="mono tag tag-NOMINAL_REGIME" id="bridge-r2-badge">R² = --</span>
+        </div>
+        <p class="lead">
+          Raw active fire counts jump sharply in 2012 (Suomi NPP) and 2018 (NOAA-20) because 375 m VIIRS resolves small burns
+          and afternoon satellites co-detect the same flame front. FireTrace clusters detections onto a 1 km equal-area grid,
+          deduplicates afternoon train passes, and bridges VIIRS via overlap calibration factor <span class="mono">κ</span>.
+        </p>
+        <div class="svg-box svg-box-tall" id="bridge-chart-box"></div>
+      </section>
+
+      <section class="kpi-grid" id="bridge-audit-kpis"></section>
+
+      <section class="panel card">
+        <h3 class="h-card">Annual Raw Sensor Counts vs. Harmonized Hotspot Equivalents (2000–2026)</h3>
+        <div class="table-scroll">
+          <table class="data-table mono">
+            <thead>
+              <tr>
+                <th>Year</th>
+                <th>Raw MODIS</th>
+                <th>Raw VIIRS</th>
+                <th>Raw Total</th>
+                <th>Harmonized HHE</th>
+                <th>FRP (MW)</th>
+                <th>Static Flares</th>
+              </tr>
+            </thead>
+            <tbody id="bridge-tbody"></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+
+    <!-- VIEW 3: EVALUATOR & AUDIT RECEIPT -->
+    <div id="view-audit" class="view stack-24" hidden>
+      <section class="panel card">
+        <div class="card-head">
+          <span class="eyebrow eyebrow-signal">Counterfactual What-If Laboratory</span>
+          <h2 class="h-card">Test What Changes the Deterministic Verdict</h2>
+        </div>
+        <div class="whatif-grid" id="whatif-grid"></div>
+      </section>
+
+      <section class="panel card">
+        <div class="card-head">
+          <span class="eyebrow">Evaluator Adversarial Checks</span>
+          <h2 class="h-card">Four Scientific Refutations Tested Automatically</h2>
+        </div>
+        <div class="refutation-grid" id="refutation-grid"></div>
+      </section>
+
+      <section class="panel card">
+        <div class="card-head">
+          <span class="eyebrow">Five-Agent Execution Trace</span>
+          <h2 class="h-card">Extractor → Planner → Investigator → Evaluator → Writer</h2>
+        </div>
+        <div class="table-scroll">
+          <table class="data-table mono">
+            <thead>
+              <tr><th>Agent</th><th>Action</th><th>Input Summary</th><th>Output Summary</th><th>Rows</th><th>Status</th></tr>
+            </thead>
+            <tbody id="trace-tbody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel card">
+        <div class="card-head wrap-head">
+          <div class="stack-4">
+            <span class="eyebrow eyebrow-signal">Offline Cryptographic Verification</span>
+            <h2 class="h-card">Verdict Receipt &amp; Query Table Hashes (Q0–Q8)</h2>
+          </div>
+          <button type="button" class="btn btn-sm" id="btn-load-receipt">Inspect Receipt JSON</button>
+        </div>
+        <p class="mono small" id="verify-cli-hint"></p>
+        <div class="table-scroll">
+          <table class="data-table mono">
+            <thead><tr><th>Query</th><th>Description</th><th>Rows</th><th>SHA-256 Digest</th></tr></thead>
+            <tbody id="queries-tbody"></tbody>
+          </table>
+        </div>
+        <pre class="code-box mono" id="receipt-json-box" hidden></pre>
+      </section>
+    </div>
+
+    <!-- VIEW 4: SCHEMA MAPPING MANIFESTO -->
+    <div id="view-manifesto" class="view stack-24" hidden>
+      <section class="panel card">
+        <span class="eyebrow eyebrow-signal">Semantic Schema Mapping Manifesto</span>
+        <h2 class="h-section" style="font-size:28px">Source FIRMS Schemas → Harmonized Target Tables</h2>
+        <p class="lead">
+          Every field transformation between MODIS C6.1, VIIRS Suomi NPP, and VIIRS NOAA-20/21 is strictly typed,
+          null-standardized, and auditable before execution.
+        </p>
+        <div id="manifesto-sources" class="refutation-grid"></div>
+      </section>
+      <div id="manifesto-targets" class="stack-24"></div>
+    </div>
+
+    <!-- VIEW 5: JUDGE & TRAP BENCH -->
+    <div id="view-bench" class="view stack-24" hidden>
+      <section class="panel card">
+        <div class="card-head wrap-head">
+          <div class="stack-4">
+            <span class="eyebrow eyebrow-signal">Automated Verification Suite</span>
+            <h2 class="h-section" style="font-size:28px">12-Case Scientific &amp; Trap Benchmark</h2>
+          </div>
+          <button type="button" class="btn btn-go" id="btn-run-bench">Run All 12 Bench Cases</button>
+        </div>
+        <p class="lead">
+          Tests real-world regimes, the 2012 VIIRS raw-count trap, the Basra gas-flare trap, custom GeoJSON polygons,
+          and sensitivity checks through the identical deterministic engine.
+        </p>
+        <div id="bench-summary" class="mono small"></div>
+        <div class="table-scroll">
+          <table class="data-table">
+            <thead>
+              <tr><th>Case</th><th>Scenario</th><th>Expected</th><th>Actual</th><th>Z_robust</th><th>Bias Red %</th><th>Status</th></tr>
+            </thead>
+            <tbody id="bench-tbody"></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <footer class="foot">
+    <div class="foot-in small muted">
+      <span>FireTrace · Built for 2026 NASA Space Apps Challenge (Harmonization of MODIS and VIIRS Hot Spots)</span>
+      <span>Architecture: Field Instrument · Deterministic Rules &amp; Offline Cryptographic Receipt</span>
+    </div>
+  </footer>
+</body>
+</html>
+
