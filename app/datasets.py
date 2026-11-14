@@ -348,7 +348,7 @@ def generate_firms_records(
     year_start: int = 2000,
     year_end: int = 2026,
 ) -> list[dict[str, Any]]:
-    """Generate deterministic, realistic raw FIRMS MODIS & VIIRS rows for the AOI."""
+    """Generate versioned synthetic fixtures in FIRMS-shaped rows, not observations."""
     rng = random.Random(_seed_for(aoi))
     geometry = aoi["geometry"]
     bbox = aoi["bbox"]
@@ -395,6 +395,8 @@ def generate_firms_records(
         max_month = 11 if yr == 2026 else 12
 
         for mo in range(1, max_month + 1):
+            if yr == 2000 and mo < 11:
+                continue
             shock = yr_shocks.get(mo, 1.0)
             w = weights[mo - 1]
             # Expected true physical 1 km fire activity units before sensor split
@@ -454,10 +456,10 @@ def generate_firms_records(
                     sats_available = ["N"]
                     if yr >= 2018:
                         sats_available.append("N20")
-                    if yr >= 2023:
+                    if yr >= 2024:
                         sats_available.append("N21")
                     # Pick 1 or 2 afternoon train satellites to simulate real constellation co-detection
-                    active_sats = sats_available[:1] if (ev_idx % 3 != 0 or len(sats_available) == 1) else sats_available[:2]
+                    active_sats = [sats_available[ev_idx % len(sats_available)]] if ev_idx % 3 else sats_available
                     for v_sat in active_sats:
                         for sub in range(n_sub):
                             sub_lat = round(ev_lat + (sub - 0.5) * 0.0022, 5)
@@ -480,26 +482,6 @@ def generate_firms_records(
                                 "daynight": daynight,
                                 "type": 0,
                             })
-                elif not modis_emitted:
-                    # Ensure pre-2012 MODIS record exists if event wasn't skipped
-                    records.append({
-                        "latitude": round(ev_lat, 5),
-                        "longitude": round(ev_lon, 5),
-                        "brightness": round(309.5 + min(40.0, base_frp * 0.5), 1),
-                        "scan": 1.1,
-                        "track": 1.0,
-                        "acq_date": acq_date,
-                        "acq_time": "0220" if is_night else "1330",
-                        "satellite": "Terra" if yr < 2002 else "Aqua",
-                        "instrument": "MODIS",
-                        "confidence": rng.randint(40, 75),
-                        "version": "6.1NRT",
-                        "bright_t31": 292.0,
-                        "frp": round(base_frp, 1),
-                        "daynight": daynight,
-                        "type": 0,
-                    })
-
             # Emit persistent static industrial gas flares (if any in AOI, e.g. AOI-FLR)
             for fl_idx, (fl_lat, fl_lon) in enumerate(flare_sites):
                 for pass_day in (5, 14, 23):
@@ -541,9 +523,25 @@ def generate_firms_records(
                                 "type": 2,
                             })
 
+    # Local-solar nominal observation times are converted to UTC. These are
+    # synthetic times, not an orbit propagation or an actual pass prediction.
+    from datetime import datetime, timedelta
+    starts = {"Terra": "2000-11-01", "Aqua": "2002-07-01", "N": "2012-01-20",
+              "N20": "2018-04-01", "N21": "2024-01-17"}
+    output = []
     for row in records:
         row["longitude"] = round(wrap_longitude(row["longitude"]), 5)
-    return [row for row in records if geometry_contains(row["longitude"], row["latitude"], geometry)]
+        sat = row["satellite"]
+        local_minutes = (22 * 60 + 30 if row["daynight"] == "N" else 10 * 60 + 30) if sat == "Terra" else (90 if row["daynight"] == "N" else 810)
+        local_minutes += {"N": 0, "N20": -25, "N21": 25}.get(sat, 0)
+        stamp = datetime.fromisoformat(row["acq_date"]) + timedelta(minutes=round(local_minutes - row["longitude"] * 4))
+        row["acq_date"], row["acq_time"] = stamp.date().isoformat(), stamp.strftime("%H%M")
+        row["fixture_version"] = "generated-demo-v2"
+        if row["acq_date"] < starts[sat] or (sat == "N" and stamp >= datetime(2026, 11, 2, 13)):
+            continue
+        if geometry_contains(row["longitude"], row["latitude"], geometry):
+            output.append(row)
+    return output
 
 
 MAX_CSV_BYTES = 10 * 1024 * 1024

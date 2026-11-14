@@ -108,18 +108,18 @@ keeps its existing return shape while returning ingestion/coverage metadata.
 explicit source/coverage, overlap agreement, percentile, robust trend, and season
 summaries. `decide(evidence: dict) -> dict` remains deterministic.
 
-- [ ] Write independent small-fixture tests for sensor/time deduplication,
+- [x] Write independent small-fixture tests for sensor/time deduplication,
   row-order invariance, per-era calibration, thermal-source categories, missing
   coverage versus zero, and per-month baseline sufficiency.
-- [ ] Write failing rule tests for January context, Z-boundaries, actual pre-peak
+- [x] Write failing rule tests for January context, Z-boundaries, actual pre-peak
   onset, missing focus observations, and short uploaded archives.
-- [ ] Define and implement the planned 2012/2018 diagnostics, RMSE/agreement,
+- [x] Define and implement the planned 2012/2018 diagnostics, RMSE/agreement,
   percentile, OLS/Theil–Sen trends, and onset/peak/cessation/duration; test known
   numeric examples and insufficient-data results independently.
-- [ ] Correct impossible fixture dates, misleading units, and unsupported
+- [x] Correct impossible fixture dates, misleading units, and unsupported
   operational claims; rerun six presets and twelve trap cases, documenting any
   changed expected results caused by legitimate scientific corrections.
-- [ ] Run `python -m unittest discover -s tests -p test_science_contracts.py -v`.
+- [x] Run `python -m unittest discover -s tests -p test_science_contracts.py -v`.
 
 ## Task 5: Immutable analysis and complete HTTP/CLI workflows
 

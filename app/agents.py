@@ -74,146 +74,57 @@ def _build_query_tables(
     return queries
 
 
-def _evaluate_refutations(
-    harmonized: dict[str, Any],
-    calendar: dict[str, Any],
-    raw_calendar: dict[str, Any],
-) -> list[dict[str, Any]]:
-    """Run the Evaluator's four adversarial scientific checks."""
+def _fmt(value, pattern=".2f"):
+    return format(value, pattern) if value is not None else "not available"
+
+
+def _evaluate_refutations(harmonized, calendar, raw_calendar):
+    """Report bounded diagnostic evidence without claiming external validation."""
     audit = harmonized["sensor_calibration_audit"]
-    hotspots = harmonized["hotspots"]
-    avg_area = round(
-        sum(h["effective_area_km2"] for h in hotspots) / max(1, len(hotspots)),
-        3,
-    )
+    reduction = audit["bias_reduction_pct"]
     raw_jump = audit["raw_step_jump_2012_pct"]
-    harm_diff = audit["harmonized_step_diff_2012_pct"]
-    bias_red = audit["bias_reduction_pct"]
-
-    r1_triggered = abs(raw_jump) >= 50.0
-    r1_status = "MITIGATED" if (r1_triggered and bias_red >= 70.0) else ("PASS" if not r1_triggered else "WARN")
-
-    dups = audit["overpass_duplicates_removed"]
-    r2_status = "MITIGATED" if dups > 0 else "PASS"
-
-    flare_share = audit["flare_contamination_share"]
-    r4_status = "FLAGGED" if flare_share > 0.50 else ("MITIGATED" if flare_share > 0.0 else "PASS")
-
+    status = ("NOT_ASSESSED" if reduction is None else
+              "MITIGATED" if reduction >= 70 else "WARN")
     return [
-        {
-            "id": "R1_SENSOR_SWITCH_ILLUSION",
-            "title": "2012 / 2018 VIIRS Sensor-Switch Discontinuity Test",
-            "hypothesis_tested": "Post-2012 increase in fire counts is an artifact of 375 m VIIRS sensitivity rather than physical burning.",
-            "status": r1_status,
-            "evidence": (
-                f"Raw unharmonized counts exhibit a {raw_jump:+.1f}% discontinuity after 2012 (raw/MODIS ratio = "
-                f"{audit['raw_viirs_to_modis_ratio']:.2f}x). Applying 1 km clustering and overlap bridge "
-                f"kappa={audit['calibrated_kappa']:.3f} (R²={audit['bridge_r2']:.3f}) reduces step bias to "
-                f"{harm_diff:+.1f}% ({bias_red:.1f}% bias reduction)."
-            ),
-            "raw_z_focus": raw_calendar["focus_comparison"]["z_robust"],
-            "harmonized_z_focus": calendar["focus_comparison"]["z_robust"],
-        },
-        {
-            "id": "R2_AFTERNOON_TRAIN_DOUBLE_COUNT",
-            "title": "Afternoon Constellation Overpass Deduplication Test",
-            "hypothesis_tested": "Co-orbiting afternoon satellites (Aqua, S-NPP, NOAA-20, NOAA-21) double-count the same fire event.",
-            "status": r2_status,
-            "evidence": (
-                f"Collapsed {dups:,} redundant sub-pixel and co-orbital afternoon-train detections into "
-                f"{audit['total_harmonized_events']:,} unique 1 km spatiotemporal burning events."
-            ),
-        },
-        {
-            "id": "R3_OFF_NADIR_PIXEL_GROWTH",
-            "title": "Off-Nadir Bow-Tie Pixel Geometry Audit",
-            "hypothesis_tested": "High scan-angle detections inflate apparent burning extent across sensor swaths.",
-            "status": "MITIGATED",
-            "evidence": (
-                f"Normalized scan×track footprint area (mean {avg_area:.3f} km²) onto equal-area 1 km "
-                f"sinusoidal cells (G1K_*) rather than weighting raw point density."
-            ),
-        },
-        {
-            "id": "R4_STATIC_INDUSTRIAL_FLARE_TRAP",
-            "title": "Static Industrial Gas Flare & Volcano Contamination Test",
-            "hypothesis_tested": "Persistent stationary thermal emitters (FIRMS type=2 or >=8 mo/yr) mask vegetation fire regimes.",
-            "status": r4_status,
-            "evidence": (
-                f"Detected {audit['static_flare_detections']:,} stationary industrial detections "
-                f"({flare_share:.1%} of total raw records across {len(harmonized['persistent_flare_cells'])} persistent cells). "
-                + ("Dominates >50% of signal: vegetation regime marked UNVERIFIABLE." if flare_share > 0.50
-                   else "Isolated from vegetation burning calendar.")
-            ),
-        },
+        {"id": "R1_SENSOR_SWITCH_ILLUSION", "title": "2012 / 2018 transition diagnostics",
+         "hypothesis_tested": "Compare complete three-year windows before and after each transition.",
+         "status": status,
+         "evidence": f"2012 raw change {_fmt(raw_jump)}%; harmonized change {_fmt(audit['harmonized_step_diff_2012_pct'])}%; change reduction {_fmt(reduction)}%. This descriptive comparison cannot separate sensor and physical change. See both transition audits.",
+         "raw_z_focus": raw_calendar["focus_comparison"]["z_robust"],
+         "harmonized_z_focus": calendar["focus_comparison"]["z_robust"]},
+        {"id": "R2_AFTERNOON_TRAIN_DOUBLE_COUNT", "title": "Cell occupancy and timestamp windows",
+         "hypothesis_tested": "Avoid raising occupancy for repeated rows, subpixels, and coincident satellites.",
+         "status": "MITIGATED" if audit["overpass_duplicates_removed"] else "PASS",
+         "evidence": f"{audit['total_raw_detections']} selected rows form {len(harmonized['hotspots'])} cell windows. Sources are averaged within each family in anchored 60-minute windows; morning and afternoon passes remain separate. Missing times retain date-only source groups. This is a heuristic, not event ground truth."},
+        {"id": "R3_OFF_NADIR_PIXEL_GROWTH", "title": "Target grid and footprint limitations",
+         "hypothesis_tested": "Prevent raw subpixel density from being interpreted as burning extent.",
+         "status": "LIMITATION",
+         "evidence": "Occupancy uses a 1,000 m sinusoidal target grid, distinct from the native MODIS tile grid. Scan/track metadata are retained. No polygon footprint intersection, bow-tie correction, or burned-area estimate is claimed."},
+        {"id": "R4_STATIC_INDUSTRIAL_FLARE_TRAP", "title": "Supplied source types and persistence flags",
+         "hypothesis_tested": "Separate vegetation-type records from supplied volcanic, other static-land, and offshore source types.",
+         "status": "FLAGGED" if audit["non_vegetation_share"] > .5 else "MITIGATED" if audit["non_vegetation_share"] else "PASS",
+         "evidence": f"{audit['static_flare_detections']} rows have supplied non-vegetation types ({audit['non_vegetation_share']:.1%}). Guard enabled: {audit['exclude_static_flares']}. Persistence-only flags are retained without establishing an industrial cause or automatically excluding vegetation records."},
     ]
 
 
-def _persona_briefing(
-    persona: str,
-    aoi: dict[str, Any],
-    calendar: dict[str, Any],
-    decision: dict[str, Any],
-    audit: dict[str, Any],
-) -> dict[str, Any]:
-    focus = calendar["focus_comparison"]
-    records = calendar["summary_records"]
-    verdict = decision["verdict"]
-    peaks = ", ".join(records["peak_month_names"])
+def _persona_briefing(persona, aoi, calendar, decision, audit):
+    focus, records = calendar["focus_comparison"], calendar["summary_records"]
     p_key = persona if persona in PERSONAS else "responder"
-
-    if p_key == "responder":
-        headline = (
-            f"{verdict.replace('_', ' ')}: {focus['month_name']} {focus['year']} stands at "
-            f"{focus['anomaly_pct']:+.1f}% vs 2001–2020 median ({focus['value']:.1f} vs {focus['hist_median']:.1f} HHE)."
-        )
-        actions = [
-            f"Critical historical season windows: {peaks}. Peak single year on record: {records['peak_year']}.",
-            (
-                "Escalate regional suppression readiness and monitor upcoming Terra/Aqua/VIIRS overpasses."
-                if verdict == "CRITICAL_ANOMALY"
-                else "Maintain watch-level briefing and track 10-day dekadal trajectory."
-                if verdict == "ELEVATED_WATCH"
-                else "Investigate ground verification before interpreting thermal anomalies as vegetation wildfire."
-                if verdict == "UNVERIFIABLE"
-                else "Activity aligns with historical seasonal baseline; maintain routine monitoring."
-            ),
-        ]
-    elif p_key == "scientist":
-        headline = (
-            f"Sensor bridge kappa={audit['calibrated_kappa']:.3f} (R²={audit['bridge_r2']:.3f}) reduced 2012 "
-            f"step bias by {audit['bias_reduction_pct']:.1f}% ({audit['raw_step_jump_2012_pct']:+.1f}% -> "
-            f"{audit['harmonized_step_diff_2012_pct']:+.1f}%)."
-        )
-        actions = [
-            f"Multi-decadal slope: {records['harmonized_trend_slope_per_decade']:+.2f} HHE/decade vs raw {records['raw_trend_slope_per_decade']:+.2f}/decade.",
-            f"Focus period Z_robust = {focus['z_robust']:+.2f}, rank #{focus['rank_in_history']} of {focus['history_years_count']} years.",
-        ]
-    elif p_key == "land_manager":
-        headline = (
-            f"Attribution: {audit['wildfire_share']:.0%} wildfire, {audit['agricultural_share']:.0%} agricultural "
-            f"crop-residue burns, {audit['flare_contamination_share']:.0%} static flares."
-        )
-        actions = [
-            f"Peak management window for prescribed burn & permit enforcement: {peaks}.",
-            f"Total harmonized radiative energy in {focus['month_name']} {focus['year']}: {focus['frp_total_mw']:,.0f} MW.",
-        ]
-    else:  # firefighter
-        headline = (
-            f"Nocturnal persistence {focus['night_share']:.0%} in {focus['month_name']} {focus['year']} "
-            f"({focus['frp_total_mw']:,.0f} MW FRP) — {'active multi-night burn conditions' if focus['night_share'] >= 0.40 else 'predominantly diurnal burn cycle'}."
-        )
-        actions = [
-            f"Check Passes & .ics schedule for next daylight/nighttime MODIS and VIIRS overpasses over {aoi['name']}.",
-            "Download GeoJSON cell coordinates for tactical GIS overlay.",
-        ]
-
-    return {
-        "persona": p_key,
-        "persona_label": PERSONAS[p_key],
-        "headline": headline,
-        "actions": actions,
+    unit = "raw detections" if calendar["mode"] == "raw" else "HHE index"
+    headline = (f"{decision['verdict'].replace('_', ' ')}: {focus['month_name']} {focus['year']} "
+                f"{_fmt(focus['value'], '.1f')} {unit}; reference median {_fmt(focus['hist_median'], '.1f')}.")
+    common = "Demonstration analysis; confirm source coverage and independent evidence before interpreting fire conditions."
+    details = {
+        "responder": [f"Focus coverage: {focus['coverage_status']}. Reference months: {calendar['baseline_year_count']}; complete reference months: {calendar['baseline_complete_year_count']}.", common],
+        "scientist": [f"Bridge kappa={_fmt(audit['calibrated_kappa'], '.3f')} ({audit['calibration_basis']}); correlation R²={_fmt(audit['bridge_r2'], '.3f')}, agreement efficiency={_fmt(audit['bridge_efficiency'], '.3f')}.",
+                      f"Complete-year Theil-Sen slope={_fmt(records['theil_sen_slope_per_decade'])}/decade; Z={_fmt(focus['z_robust'])}. Correlation is not validation."],
+        "land_manager": [f"Supplied non-vegetation source share: {audit['non_vegetation_share']:.1%}. Thermal patterns alone cannot attribute agricultural burning or wildfire.",
+                         f"Summed observed FRP: {_fmt(focus['frp_total_mw'], '.1f')} MW across observations; this is power sampled repeatedly, not energy or burned area."],
+        "firefighter": [f"Night share among records with known day/night labels: {_fmt(focus['night_share'], '.2f')}. This does not establish crown fire, intensity, or continuous burning.",
+                        "Pass schedules are approximate modeled opportunities. Use official observation products and local operational channels for decisions."],
     }
+    return {"persona": p_key, "persona_label": PERSONAS[p_key], "headline": headline,
+            "actions": details[p_key], "limitation": common}
 
 
 def _compute_what_ifs(
@@ -276,7 +187,7 @@ def _compute_what_ifs(
     med_focus["anomaly_abs"] = 0.0
     med_focus["anomaly_pct"] = 0.0
     med_focus["z_robust"] = 0.0
-    med_focus["night_share"] = min(0.25, med_focus["night_share"])
+    med_focus["night_share"] = min(0.25, med_focus["night_share"]) if med_focus["night_share"] is not None else None
     med_dec = decide({
         "aoi": aoi,
         "calendar": med_cal,
@@ -293,11 +204,11 @@ def _compute_what_ifs(
             "verdict_before": base_decision["verdict"],
             "verdict_after": alt_mode_dec["verdict"],
             "flips_verdict": alt_mode_dec["verdict"] != base_decision["verdict"],
-            "z_before": round(float(med_cal["focus_comparison"]["z_robust"] if False else alt_cal["focus_comparison"]["z_robust"]), 2),
+            "z_before": build_burning_calendar(harmonized, aoi, year_start=options["year_start"], year_end=options["year_end"], focus_year=options["focus_year"], focus_month=options["focus_month"], mode=mode)["focus_comparison"]["z_robust"],
         },
         {
             "id": "toggle_flare_guard",
-            "label": f"{'Enable' if alt_flare_guard else 'Disable'} static industrial flare guard",
+            "label": f"{'Enable' if alt_flare_guard else 'Disable'} supplied non-vegetation source guard",
             "field": "flare_guard",
             "value": alt_flare_guard,
             "verdict_before": base_decision["verdict"],
@@ -329,6 +240,10 @@ def run_investigation(
     """Execute the full 5-agent investigation and return the complete structured output."""
     aoi = parse_custom_aoi(request)
     options = validate_options(request, aoi)
+    aoi["source_kind"] = "generated_demo" if raw_records_override is None else request.get("source_kind", "provided_records")
+    aoi["complete_periods"] = ([(y, m) for y in range(2000, 2027) for m in range(1, 13)
+                              if (2000, 11) <= (y, m) <= (2026, 11)]
+                              if aoi["source_kind"] == "generated_demo" else request.get("complete_periods", []))
     year_start, year_end = options["year_start"], options["year_end"]
     focus_year, focus_month = options["focus_year"], options["focus_month"]
     mode, flare_guard = options["mode"], options["flare_guard"]
@@ -445,6 +360,8 @@ def run_investigation(
             "geojson": aoi["geometry"],
             "selection_model": aoi.get("selection_model", "preset_box"),
             "selection_notes": aoi.get("selection_notes", []),
+            "source_kind": aoi["source_kind"],
+            "complete_periods": aoi["complete_periods"],
         },
         "options": options,
         "verdict": decision["verdict"],

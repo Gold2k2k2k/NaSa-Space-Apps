@@ -18,6 +18,10 @@ from app.canonical import sha256_of
 from app.evidence import expected_query_rows
 from app.receipt import LEGACY_RECEIPT_VERSION, RECEIPT_VERSION, rules_sha256
 from app.rules import decide
+from app.rules import RULES_VERSION
+from app import legacy_rules
+
+MAX_RECEIPT_BYTES = 20 * 1024 * 1024
 
 
 def check_receipt(receipt: dict[str, Any]) -> dict[str, Any]:
@@ -36,8 +40,16 @@ def check_receipt(receipt: dict[str, Any]) -> dict[str, Any]:
     if version not in (RECEIPT_VERSION, LEGACY_RECEIPT_VERSION):
         raise ValueError(f"Unsupported receipt version: {version!r}")
     problems: list[str] = []
-    if receipt.get("rules_sha256") != rules_sha256():
-        problems.append("rules_sha256 mismatch: app/rules.py differs from the receipt")
+    rules_version = receipt.get("rules_version")
+    decision_function = decide
+    expected_rules_hash = rules_sha256()
+    if rules_version == legacy_rules.RULES_VERSION:
+        decision_function = legacy_rules.decide
+        expected_rules_hash = sha256_of(Path(legacy_rules.__file__).read_text(encoding="utf-8"))
+    elif rules_version != RULES_VERSION:
+        problems.append("unsupported or changed rules_version")
+    if receipt.get("rules_sha256") != expected_rules_hash:
+        problems.append("rules_sha256 mismatch: versioned rules source differs from the receipt")
     if version == RECEIPT_VERSION:
         payload = {k: v for k, v in receipt.items() if k != "receipt_sha256"}
         if sha256_of(payload) != receipt.get("receipt_sha256"):
@@ -110,7 +122,7 @@ def check_receipt(receipt: dict[str, Any]) -> dict[str, Any]:
         "sensor_calibration_audit": receipt["sensor_calibration_audit"],
         "options": receipt["options"],
     }
-    recomputed = decide(evidence)
+    recomputed = decision_function(evidence)
     for field in ("rules_version", "verdict", "deciding_rule", "findings", "verdict_sha256"):
         if sha256_of(recomputed[field]) != sha256_of(receipt.get(field)):
             problems.append(f"{field} disagrees with the re-derived decision")
@@ -131,8 +143,12 @@ def main(argv: list[str]) -> int:
         return 2
     path = Path(argv[0])
     try:
-        receipt = json.loads(path.read_text(encoding="utf-8-sig"))
-    except (OSError, ValueError) as err:
+        with path.open("rb") as stream:
+            contents = stream.read(MAX_RECEIPT_BYTES + 1)
+        if len(contents) > MAX_RECEIPT_BYTES:
+            raise ValueError("Receipt exceeds the 20 MiB input limit")
+        receipt = json.loads(contents.decode("utf-8-sig"))
+    except (OSError, ValueError, RecursionError) as err:
         print(f"UNREADABLE: {err}")
         return 2
     try:

@@ -28,6 +28,22 @@ class TestReceiptIntegrity(unittest.TestCase):
         receipt = json.loads(json.dumps(self.receipt))
         self.assertEqual(check_receipt(receipt)["status"], "VALID")
 
+    def test_committed_legacy_examples_use_their_frozen_rules(self):
+        paths = sorted((ROOT / "output_examples").glob("*receipt.json"))
+        self.assertGreaterEqual(len(paths), 3)
+        for path in paths:
+            with self.subTest(path=path.name):
+                self.assertEqual(check_receipt(json.loads(path.read_text(encoding="utf-8")))["status"], "VALID")
+
+    def test_deep_receipt_cli_exits_two_without_traceback(self):
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / "receipt.json"
+            path.write_text("[" * 2000 + "0" + "]" * 2000, encoding="utf-8")
+            result = subprocess.run([sys.executable, "-B", str(ROOT / "verify.py"), str(path)],
+                                    capture_output=True, text=True, check=False)
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        self.assertNotIn("Traceback", result.stdout + result.stderr)
+
     def test_fixed_run_archive_does_not_depend_on_wall_clock(self) -> None:
         with patch("zipfile.time.localtime", return_value=(2026, 1, 1, 0, 0, 0, 3, 1, -1)):
             first = package_zip(self.analysis)

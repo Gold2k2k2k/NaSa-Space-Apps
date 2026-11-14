@@ -19,7 +19,7 @@ from datetime import date
 from typing import Any, Optional
 
 NULL_MARKERS = {"", "null", "none", "n/a", "na", "nan", "-"}
-CONFIDENCE_WEIGHTS = {"low": 0.45, "nominal": 0.80, "high": 1.00}
+CONFIDENCE_WEIGHTS = {"unknown": 0.0, "low": 0.45, "nominal": 0.80, "high": 1.00}
 _DATE_RE = re.compile(r"^(\d{4})-(\d{2})-(\d{2})$")
 
 SOURCE_SCHEMAS: dict[str, dict[str, Any]] = {
@@ -288,7 +288,7 @@ def normalize_satellite(raw_sat: Any, instrument: str) -> tuple[str, bool]:
 def normalize_confidence(instrument: str, raw_conf: Any) -> tuple[str, float]:
     """Resolve numeric MODIS (0..100) and categorical VIIRS (l/n/h) confidence."""
     if clean_str(raw_conf) is None:
-        return "nominal", CONFIDENCE_WEIGHTS["nominal"]
+        return "unknown", CONFIDENCE_WEIGHTS["unknown"]
     text = str(raw_conf).strip().lower()
     if text in {"l", "low"}:
         return "low", CONFIDENCE_WEIGHTS["low"]
@@ -307,12 +307,11 @@ def normalize_confidence(instrument: str, raw_conf: Any) -> tuple[str, float]:
             cls = "nominal"
         else:
             cls = "high"
-        weight = round(max(0.25, min(1.0, clamped / 100.0)), 4) if instrument == "MODIS" else CONFIDENCE_WEIGHTS[cls]
-        return cls, weight
+        return cls, CONFIDENCE_WEIGHTS[cls]
     raise ValueError(f"Invalid confidence value: {raw_conf!r}")
 
 
-def _measurement(raw: dict[str, Any], key: str, default: float, *, positive: bool = False) -> float:
+def _measurement(raw: dict[str, Any], key: str, default: float | None, *, positive: bool = False) -> float | None:
     value = clean_float(raw.get(key))
     if value is None:
         if clean_str(raw.get(key)) is not None:
@@ -320,14 +319,19 @@ def _measurement(raw: dict[str, Any], key: str, default: float, *, positive: boo
         return default
     if value < 0 or (positive and value == 0):
         raise ValueError(f"{key} must be {'positive' if positive else 'non-negative'}")
+    if value > 1e12:
+        raise ValueError(f"{key} exceeds the numeric safety limit")
     return value
 
 
 def cell_id_for(lat: float, lon: float) -> str:
-    """Compute an equal-area ~1 km sinusoidal grid identifier."""
-    cos_lat = max(0.05, math.cos(math.radians(lat)))
-    gx = math.floor(lon * 100.0 * cos_lat)
-    gy = math.floor(lat * 100.0)
+    """1,000-m cells on the MODIS reference sphere; not the native tile grid."""
+    radius_m = 6371007.181
+    wrapped_lon = (lon + 180.0) % 360.0 - 180.0
+    cosine = math.cos(math.radians(lat))
+    x = 0.0 if abs(cosine) < 1e-12 else radius_m * math.radians(wrapped_lon) * cosine
+    y = radius_m * math.radians(lat)
+    gx, gy = math.floor(x / 1000.0), math.floor(y / 1000.0)
     return f"G1K_{gy}_{gx}"
 
 
@@ -365,31 +369,30 @@ def normalize_hotspot_row(raw: dict[str, Any]) -> dict[str, Any]:
 
     sat_name, is_afternoon = normalize_satellite(raw.get("satellite"), inst_raw)
 
-    mir = clean_float(raw.get("bright_ti4")) if inst_raw == "VIIRS" else clean_float(raw.get("brightness"))
-    if mir is None:
-        mir = clean_float(raw.get("brightness")) or clean_float(raw.get("bright_ti4")) or 315.0
-
-    tir = clean_float(raw.get("bright_ti5")) if inst_raw == "VIIRS" else clean_float(raw.get("bright_t31"))
-    if tir is None:
-        tir = clean_float(raw.get("bright_t31")) or clean_float(raw.get("bright_ti5")) or 292.0
+    mir_keys = ("bright_ti4", "brightness") if inst_raw == "VIIRS" else ("brightness", "bright_ti4")
+    tir_keys = ("bright_ti5", "bright_t31") if inst_raw == "VIIRS" else ("bright_t31", "bright_ti5")
+    mir = next((_measurement(raw, key, None, positive=True) for key in mir_keys if clean_str(raw.get(key)) is not None), None)
+    tir = next((_measurement(raw, key, None, positive=True) for key in tir_keys if clean_str(raw.get(key)) is not None), None)
 
     conf_cls, conf_weight = normalize_confidence(inst_raw, raw.get("confidence"))
     default_scan, default_track = (0.375, 0.375) if inst_raw == "VIIRS" else (1.0, 1.0)
     scan = _measurement(raw, "scan", default_scan, positive=True)
     track = _measurement(raw, "track", default_track, positive=True)
-    frp = _measurement(raw, "frp", 12.0)
+    frp_is_missing = clean_str(raw.get("frp")) is None
+    frp = _measurement(raw, "frp", 0.0)
 
-    daynight = (clean_str(raw.get("daynight")) or "D").upper()
+    daynight = (clean_str(raw.get("daynight")) or "U").upper()
     daynight = {"DAY": "D", "NIGHT": "N"}.get(daynight, daynight)
-    if daynight not in {"D", "N"}:
+    if daynight not in {"D", "N", "U"}:
         raise ValueError("daynight must be D or N")
 
-    acq_time = (clean_str(raw.get("acq_time")) or "1330")
-    if not re.fullmatch(r"\d{1,4}", acq_time):
-        raise ValueError(f"Invalid acq_time (expected HHMM): {raw.get('acq_time')!r}")
-    acq_time = acq_time.zfill(4)
-    if int(acq_time[:2]) > 23 or int(acq_time[2:]) > 59:
-        raise ValueError(f"Invalid acq_time (expected HHMM): {raw.get('acq_time')!r}")
+    acq_time = clean_str(raw.get("acq_time"))
+    if acq_time is not None:
+        if not re.fullmatch(r"\d{1,4}", acq_time):
+            raise ValueError(f"Invalid acq_time (expected HHMM): {raw.get('acq_time')!r}")
+        acq_time = acq_time.zfill(4)
+        if int(acq_time[:2]) > 23 or int(acq_time[2:]) > 59:
+            raise ValueError(f"Invalid acq_time (expected HHMM): {raw.get('acq_time')!r}")
     fire_type_value = _measurement(raw, "type", 0.0)
     if fire_type_value not in {0.0, 1.0, 2.0, 3.0}:
         raise ValueError("FIRMS type must be an integer from 0 to 3")
@@ -407,8 +410,8 @@ def normalize_hotspot_row(raw: dict[str, Any]) -> dict[str, Any]:
         "instrument": inst_raw,
         "satellite": sat_name,
         "is_afternoon_train": is_afternoon,
-        "mir_bt_k": round(mir, 2),
-        "tir_bt_k": round(tir, 2),
+        "mir_bt_k": round(mir, 2) if mir is not None else None,
+        "tir_bt_k": round(tir, 2) if tir is not None else None,
         "confidence_class": conf_cls,
         "confidence_weight": conf_weight,
         "scan_km": round(scan, 3),
@@ -417,6 +420,14 @@ def normalize_hotspot_row(raw: dict[str, Any]) -> dict[str, Any]:
         "frp_mw": round(frp, 2),
         "daynight": daynight,
         "firms_type": fire_type,
+        "frp_is_missing": frp_is_missing,
+        "mir_is_missing": mir is None,
+        "tir_is_missing": tir is None,
+        "confidence_is_missing": conf_cls == "unknown",
+        "daynight_is_missing": daynight == "U",
+        "acq_time_is_missing": acq_time is None,
+        "firms_type_is_missing": clean_str(raw.get("type")) is None,
+        "source_version": clean_str(raw.get("version")),
     }
 
 
