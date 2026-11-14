@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark">
+<title>FireTrace · Design system preview</title>
+<style>
+<!--TOKEN_CSS-->
+*{box-sizing:border-box}body{margin:0;background:var(--color-bg);color:var(--color-text);font:16px/1.5 var(--font-sans)}
+main{max-width:1100px;margin:auto;padding:32px 20px;display:grid;gap:24px}h1,h2,p{margin:0}h1{font-size:30px;letter-spacing:-.03em}h2{font-size:22px}
+.muted{color:var(--color-subtle)}.small{font-size:14px}.mono{font-family:var(--font-mono)}
+.panel{background:var(--color-surface);border:1px solid var(--color-line);border-radius:var(--radius-panel);padding:24px;display:grid;gap:16px;min-width:0}
+.row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));gap:16px}
+.glass{background:var(--color-glass);box-shadow:var(--shadow-glass);backdrop-filter:blur(12px);border:1px solid var(--color-line-strong);border-radius:var(--radius-control);padding:16px}
+button,select,input{font:inherit}button,select{min-height:44px;border-radius:var(--radius-control);border:1px solid var(--color-line-strong);padding:8px 16px;background:var(--color-raised);color:var(--color-text)}
+button{cursor:pointer}button:hover{background:var(--color-line)}button.primary{background:var(--color-accent);color:var(--color-accent-ink);border-color:var(--color-accent)}
+button[aria-pressed="true"]{border-color:var(--color-accent);color:var(--color-accent)}label{font-size:14px;display:grid;gap:4px;min-width:0}
+select{max-width:100%;min-width:0}input[type=range]{width:100%;accent-color:var(--color-accent)}input[type=checkbox]{width:20px;height:20px;accent-color:var(--color-accent)}
+:focus-visible{outline:3px solid var(--color-focus);outline-offset:3px}.tag{padding:4px 8px;border-radius:var(--radius-small);font-size:12px;font-weight:650}
+.critical{background:var(--color-critical-bg);color:var(--color-critical)}.elevated{background:var(--color-elevated-bg);color:var(--color-elevated)}
+.nominal{background:var(--color-nominal-bg);color:var(--color-nominal)}.unverified{background:var(--color-unverified-bg);color:var(--color-unverified)}
+.well{background:var(--color-well);border:1px solid var(--color-line);border-radius:var(--radius-small);padding:16px}
+.heatmap{display:grid;grid-template-columns:repeat(8,minmax(32px,1fr));gap:3px;overflow:auto}.heatmap span{display:flex;align-items:center;justify-content:center;min-height:44px;font:12px var(--font-mono);border-radius:3px}
+.compact .heatmap span{min-height:32px}.swatches{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:8px}.swatch{padding:16px;border-radius:var(--radius-small);min-height:92px;overflow-wrap:anywhere;font-size:14px}.swatch code{display:block;font-size:12px}
+.track{height:8px;background:var(--color-raised);border-radius:6px;overflow:hidden}.track div{height:100%;background:var(--color-ember);width:30%;transition:width var(--motion-normal) var(--motion-ease)}
+table{width:100%;border-collapse:collapse;font-size:14px}td,th{padding:8px;text-align:left;border-bottom:1px solid var(--color-line);overflow-wrap:anywhere}
+.table-scroll{overflow:auto}.reduced *{transition:none!important;animation:none!important}
+@media(max-width:640px){main{padding:20px 12px}.panel{padding:16px}.heatmap{grid-template-columns:repeat(8,minmax(32px,1fr))}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+@supports not(backdrop-filter:blur(1px)){.glass{background:var(--color-surface)}}
+</style>
+</head>
+<body><main>
+<header><p class="small muted">COMPONENT PREVIEW · INVENTED VALUES</p><h1>FireTrace · Teal / Ember</h1><p class="muted">A scientific workspace with restrained glass controls and opaque data surfaces. Self-contained preview; system font fallbacks apply offline.</p></header>
+<section class="glass row" aria-label="Preview controls">
+  <label>Scientific ramp<select id="ramp"><option value="viridis">Viridis</option><option value="cividis">Cividis</option><option value="ylorrd">Ember sequential</option><option value="diverging">Diverging Z</option></select></label>
+  <label>Density<select id="density"><option value="comfortable">Comfortable</option><option value="compact">Compact specimen</option></select></label>
+  <label class="row"><input type="checkbox" id="motion">Reduce motion</label>
+</section>
+<section class="grid">
+ <article class="panel"><h2>Controls &amp; material</h2><p class="small muted">Glass groups interactive controls. Data wells stay opaque.</p><div class="row"><button class="primary" id="primary" type="button">Analyze region</button><button id="toggle" aria-pressed="true" type="button">Source guard on</button><button disabled>Unavailable</button></div><p id="status" role="status" class="small muted">Preview ready.</p><label>Sample activity <input type="range" id="activity" min="0" max="100" value="30"></label><div class="track" aria-hidden="true"><div id="fill"></div></div></article>
+ <article class="panel"><h2>Meaning stays explicit</h2><div class="row"><span class="tag critical">Critical anomaly</span><span class="tag elevated">Elevated watch</span><span class="tag nominal">Nominal regime</span><span class="tag unverified">Unverifiable</span></div><div class="well"><p class="mono" style="font-size:28px">+2.41</p><p class="small muted">Robust anomaly · descriptive index, not probability</p></div><p class="small muted">Verdict labels and table alternatives carry meaning alongside color.</p></article>
+</section>
+<section class="panel"><h2>Scientific color &amp; contrast</h2><p class="small muted">Illustrative values. Foreground selection uses linear-sRGB contrast. Every sample chooses black or white at a minimum ratio of 4.5:1.</p><div class="well"><div id="heatmap" class="heatmap"></div></div><p id="contrast-status" class="small mono" role="status"></p></section>
+<section class="panel"><h2>Semantic palette</h2><div id="swatches" class="swatches"></div></section>
+<section class="panel"><h2>Typography &amp; rhythm</h2><div class="grid"><div><h1>Region, then evidence.</h1><h2>A legible second level</h2><p>Body text connects the finding to its limits.</p><p class="small muted">Captions retain contrast against dark surfaces.</p></div><div class="mono well"><p>HHE 24.29 · Z +2.41</p><p>FRP 1,240 MW · 20 reference months</p><p class="small">Spacing: 4 / 8 / 12 / 16 / 24 / 32 / 48 px</p><p class="small">Touch controls: 44 px · panel radius: 16 px</p></div></div></section>
+<section class="panel"><h2>Declared contrast pairs</h2><div class="table-scroll"><table><thead><tr><th>Pair</th><th>Ratio</th><th>Use</th></tr></thead><tbody id="ratios"></tbody></table></div><p class="small muted">These component checks do not claim whole-application WCAG conformance.</p></section>
+</main>
+<script type="application/json" id="design-tokens"><!--TOKEN_JSON--></script>
+<script>
+const tokens=JSON.parse(document.getElementById("design-tokens").textContent),c=tokens.color;
+const rgb=hex=>[1,3,5].map(offset=>parseInt(hex.slice(offset,offset+2),16));
+function luminance(hex){const v=rgb(hex).map(n=>{const x=n/255;return x<=.04045?x/12.92:((x+.055)/1.055)**2.4});return v[0]*.2126+v[1]*.7152+v[2]*.0722}
+function ratio(a,b){const v=[luminance(a),luminance(b)].sort((x,y)=>x-y);return(v[1]+.05)/(v[0]+.05)}
+function interpolate(stops,t){const p=Math.min(1,Math.max(0,t))*(stops.length-1),i=Math.min(stops.length-2,Math.floor(p)),f=p-i,a=rgb(stops[i]),b=rgb(stops[i+1]);return"#"+a.map((n,k)=>Math.round(n+f*(b[k]-n)).toString(16).padStart(2,"0")).join("")}
+function render(){const host=document.getElementById("heatmap");host.replaceChildren();let minimum=21;for(let i=0;i<32;i++){const value=(i*17+Number(document.getElementById("activity").value))%101,bg=interpolate(tokens.ramp[document.getElementById("ramp").value],value/100),fg=ratio(bg,c.white)>=ratio(bg,c.black)?c.white:c.black;minimum=Math.min(minimum,ratio(bg,fg));const cell=document.createElement("span");cell.textContent=value;cell.style.background=bg;cell.style.color=fg;host.append(cell)}document.getElementById("contrast-status").textContent="Minimum sample text contrast: "+minimum.toFixed(2)+":1";document.getElementById("fill").style.width=document.getElementById("activity").value+"%"}
+for(const key of ["bg","surface","well","text","subtle","accent","ember","line-strong"]){const swatch=document.createElement("div");swatch.className="swatch";swatch.style.background=c[key];swatch.style.color=ratio(c[key],c.white)>=ratio(c[key],c.black)?c.white:c.black;const label=document.createElement("strong"),code=document.createElement("code");label.textContent=key;code.textContent=c[key];swatch.append(label,code);document.getElementById("swatches").append(swatch)}
+for(const[a,b,use]of[["text","surface","Body"],["subtle","raised","Secondary text"],["accent-ink","accent","Primary control"],["line-strong","well","Control boundary"],["critical","critical-bg","Critical label"],["elevated","elevated-bg","Elevated label"],["nominal","nominal-bg","Nominal label"],["unverified","unverified-bg","Unverifiable label"]]){const row=document.createElement("tr");for(const value of[a+" / "+b,ratio(c[a],c[b]).toFixed(2)+":1",use]){const cell=document.createElement("td");cell.textContent=value;row.append(cell)}document.getElementById("ratios").append(row)}
+document.getElementById("ramp").onchange=render;document.getElementById("activity").oninput=render;
+document.getElementById("density").onchange=event=>document.body.classList.toggle("compact",event.target.value==="compact");
+document.getElementById("motion").onchange=event=>document.body.classList.toggle("reduced",event.target.checked);
+document.getElementById("primary").onclick=()=>{document.getElementById("status").textContent="Preview interaction completed; no analysis request was sent."};
+document.getElementById("toggle").onclick=event=>{const on=event.target.getAttribute("aria-pressed")!=="true";event.target.setAttribute("aria-pressed",String(on));event.target.textContent="Source guard "+(on?"on":"off")};render();
+</script>
+</body></html>

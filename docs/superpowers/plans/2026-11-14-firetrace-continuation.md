@@ -167,16 +167,16 @@ all existing export functions consume the same immutable analysis snapshot.
 are the shared JSON/CSS source of semantic color, typography, spacing, radii,
 elevation, motion, and breakpoint decisions.
 
-- [ ] Capture existing rendered baselines and failures at 375px and 1440px; record
+- [x] Capture existing rendered baselines and failures at 375px and 1440px; record
   keyboard gaps and actual contrast failures without treating mocks as HTTP tests.
-- [ ] Generate synchronized tokens, rationale, and dependency-free interactive
+- [x] Generate synchronized tokens, rationale, and dependency-free interactive
   preview with restrained teal/ember glass navigation/cards and crisp data wells.
-- [ ] Repair responsive minimum sizing, primary navigation, keyboard heatmap,
+- [x] Repair responsive minimum sizing, primary navigation, keyboard heatmap,
   accessible charts/legends, contrast, reduced motion, blur fallback, loading and
   error feedback, CSV/polygon guidance, and safe export availability.
-- [ ] Add request cancellation/versioning so delayed responses cannot overwrite
+- [x] Add request cancellation/versioning so delayed responses cannot overwrite
   the latest selection. Test failed requests on all five views.
-- [ ] Run browser tests against the real server for presets, custom inputs,
+- [x] Run browser tests against the real server for presets, custom inputs,
   polygon and upload workflows, all toggles/ramps/roles, every download, receipt
   inspection, and trap bench; require no document overflow or unexpected errors.
 

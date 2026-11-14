@@ -52,7 +52,7 @@ class AnalysisRequest(AnalysisOptions):
 class WhatIfBody(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
     field: Literal["mode", "flare_guard", "focus_year", "focus_month", "focus_period",
-                   "confidence_min", "persona", "focus_to_median"]
+                   "confidence_min", "persona", "focus_to_median", "options"]
     value: Any
 
 
@@ -72,15 +72,19 @@ def validate_options(request: dict[str, Any], aoi: dict[str, Any]) -> dict[str, 
 def counterfactual_options(options, field, value):
     """Validate actual values rather than coercing typos and strings to choices."""
     updated = dict(options)
-    if field == "focus_period":
+    if field == "options":
+        if not isinstance(value, dict) or not value or set(value) - set(AnalysisOptions.model_fields):
+            raise ValueError("options must be a nonempty object of supported analysis options")
+        updated.update(value)
+    elif field == "focus_period":
         if not isinstance(value, (list, tuple)) or len(value) != 2:
             raise ValueError("focus_period must contain [year, month]")
         updated["focus_year"], updated["focus_month"] = value
     elif field in ("mode", "flare_guard", "focus_year", "focus_month", "confidence_min", "persona"):
         updated[field] = value
     elif field == "focus_to_median":
-        if value is not True:
-            raise ValueError("focus_to_median requires the boolean true")
+        if type(value) is not bool:
+            raise ValueError("focus_to_median requires a boolean")
     else:
         raise ValueError(f"Unsupported what_if field: {field!r}")
     return AnalysisOptions.model_validate(updated).model_dump()

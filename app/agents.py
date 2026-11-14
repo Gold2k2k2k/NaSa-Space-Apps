@@ -439,7 +439,7 @@ def run_investigation(
 def apply_what_if(run_state: dict[str, Any], field: str, value: Any) -> dict[str, Any]:
     """Construct a new content-bound snapshot; the parent is never mutated."""
     options = counterfactual_options(run_state["options"], field, value)
-    scenario = run_state.get("_scenario", False) or field == "focus_to_median"
+    scenario = value if field == "focus_to_median" else run_state.get("_scenario", False)
     lineage = {"parent_run_id": run_state["run_id"], "field": field, "value": copy.deepcopy(value),
                "verdict_before": run_state["verdict"]}
     request = {**options, "reference_time": run_state["reference_time"]}

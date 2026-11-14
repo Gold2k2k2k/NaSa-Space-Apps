@@ -194,6 +194,11 @@ def schema_mapping() -> dict[str, Any]:
     return get_manifesto()
 
 
+@app.get("/api/methods/{name}", include_in_schema=False)
+def method_notes(name: Literal["science", "inputs", "receipts", "exports"]) -> FileResponse:
+    return FileResponse(STATIC_DIR.parents[2] / "docs" / (name.upper() + ".md"), media_type="text/plain")
+
+
 @app.post("/api/analyze")
 @app.post("/run")
 def analyze(request: AnalysisRequest) -> dict[str, Any]:

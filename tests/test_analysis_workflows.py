@@ -89,6 +89,20 @@ class TestAnalysisSnapshots(unittest.TestCase):
         self.assertNotEqual(changed["run_id"], state["run_id"])
         self.assertEqual(before, sha256_of(state))
 
+        restored = apply_what_if(changed, "focus_to_median", False)
+        self.assertIsNone(restored["counterfactual"])
+        self.assertEqual(restored["calendar"]["focus_comparison"]["value"], state["calendar"]["focus_comparison"]["value"])
+        self.assertEqual(check_receipt(build_receipt(restored))["status"], "VALID")
+
+    def test_form_option_changes_preserve_uploaded_records(self):
+        state = run_investigation(REQUEST, raw_records_override=ROWS)
+        changed = apply_what_if(state, "options", {"year_start": 2020, "year_end": 2026,
+            "focus_year": 2026, "focus_month": 7, "confidence_min": "high"})
+        self.assertEqual(changed["_raw_records"], state["_raw_records"])
+        self.assertEqual(changed["aoi"], state["aoi"])
+        self.assertEqual(changed["options"]["year_start"], 2020)
+        self.assertEqual(check_receipt(build_receipt(changed))["status"], "VALID")
+
     def test_cross_process_identity_receipt_and_archive_are_reproducible(self):
         script = ("import hashlib,json; from app.agents import run_investigation; "
                   "from app.receipt import build_receipt,package_zip; "

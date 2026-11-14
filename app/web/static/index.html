@@ -4,388 +4,125 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="dark">
-  <title>FireTrace · Harmonized MODIS &amp; VIIRS Burning Calendar</title>
+  <meta name="description" content="Explore a transparent offline MODIS and VIIRS fire-regime demonstration, inspect its assumptions, and reproduce its evidence.">
+  <title>FireTrace · Fire regime explorer</title>
   <link rel="icon" href="/static/mark.svg" type="image/svg+xml">
   <link rel="preload" href="/static/fonts/Geist-Variable.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/static/tokens.css">
   <link rel="stylesheet" href="/static/app.css">
-  <script src="/static/app.js" defer></script>
+  <script type="module" src="/static/app.js"></script>
 </head>
 <body>
   <a class="skip" href="#main">Skip to workspace</a>
-
   <header class="bar">
     <div class="bar-in">
-      <a class="brand" href="#/">
-        <img src="/static/mark.svg" width="28" height="28" alt="">
-        <span>FireTrace</span>
-      </a>
-      <nav class="tabs" aria-label="Primary Views">
-        <a id="tab-calendar" href="#/">Burning Calendar</a>
-        <a id="tab-bridge" href="#/bridge">Sensor Bridge</a>
-        <a id="tab-audit" href="#/audit">Evaluator &amp; Receipt</a>
-        <a id="tab-manifesto" href="#/manifesto">Schema Manifesto</a>
-        <a id="tab-bench" href="#/bench">Trap Bench</a>
+      <a class="brand" href="#/" aria-label="FireTrace calendar"><img src="/static/mark.svg" width="28" height="28" alt=""><span>FireTrace<small>FIRE REGIME EXPLORER</small></span></a>
+      <nav class="tabs" aria-label="Primary views">
+        <a id="tab-calendar" href="#/" aria-current="page">Calendar</a>
+        <a id="tab-bridge" href="#/bridge" aria-label="Sensor Bridge" data-short="Bridge"><span class="nav-full">Sensor Bridge</span></a>
+        <a id="tab-audit" href="#/audit" aria-label="Audit &amp; Receipt" data-short="Audit"><span class="nav-full">Audit &amp; Receipt</span></a>
+        <a id="tab-manifesto" href="#/manifesto">Schemas</a>
+        <a id="tab-bench" href="#/bench" aria-label="Trap Bench" data-short="Bench"><span class="nav-full">Trap Bench</span></a>
       </nav>
-      <div class="bar-end">
-        <label class="ramp-picker" for="ramp-select">
-          <span class="sub">Ramp</span>
-          <select id="ramp-select" aria-label="Accessible Color Ramp"></select>
-        </label>
-        <label class="ramp-picker" for="persona-select">
-          <span class="sub">Audience</span>
-          <select id="persona-select" aria-label="Target Audience Lens"></select>
-        </label>
-      </div>
+      <span class="source-badge" id="source-badge"><i aria-hidden="true"></i>Offline demonstration</span>
     </div>
   </header>
-
   <main id="main" tabindex="-1">
-    <!-- Top Workspace Control Strip (Always visible on primary views) -->
-    <section class="panel control-deck" id="control-deck" aria-label="Region & Date Controls">
-      <div class="deck-top">
-        <div class="stack-8">
-          <span class="eyebrow eyebrow-signal">NASA Space Apps 2026 · MODIS C6.1 + VIIRS S-NPP / NOAA-20 / NOAA-21 Harmonization</span>
-          <h1 class="h-hero" id="aoi-heading">Harmonized Burning Activity Calendar (2000–2026)</h1>
-        </div>
-        <div class="deck-status">
-          <span class="mono sub" id="run-seal-pill"></span>
-          <span class="tag" id="hero-verdict-tag">READY</span>
-        </div>
+    <div class="feedback-row"><p id="global-status" role="status" aria-live="polite">Preparing the demonstration…</p><span class="small muted" id="snapshot-reference"></span></div>
+    <div id="global-error" class="error" role="alert" hidden><span id="error-message"></span><button type="button" class="btn" id="btn-retry">Retry</button></div>
+
+    <section id="analysis-context" aria-label="Analysis context" class="context">
+      <div class="context-heading">
+        <div><p class="eyebrow">MODIS + VIIRS · NASA Space Apps project</p><h1 id="aoi-heading">A clearer view of thermal activity</h1><p class="small muted" id="aoi-description">Generated presets and your FIRMS CSVs share one auditable workflow.</p></div>
+        <div class="context-status"><span class="tag" id="hero-verdict-tag">LOADING</span><span class="mono small muted" id="run-seal-pill"></span></div>
       </div>
-
-      <div class="preset-row" id="preset-row" role="group" aria-label="Benchmark Areas of Interest"></div>
-
-      <form class="query-bar" id="query-form">
-        <label class="field">
-          <span class="sub">Latitude</span>
-          <input type="number" step="0.01" min="-90" max="90" id="in-lat" required>
-        </label>
-        <label class="field">
-          <span class="sub">Longitude</span>
-          <input type="number" step="0.01" min="-180" max="180" id="in-lon" required>
-        </label>
-        <label class="field">
-          <span class="sub">Radius (km)</span>
-          <input type="number" step="5" min="10" max="250" id="in-radius" value="100">
-        </label>
-        <label class="field">
-          <span class="sub">Start Year</span>
-          <input type="number" min="2000" max="2025" id="in-y0" value="2000">
-        </label>
-        <label class="field">
-          <span class="sub">End Year</span>
-          <input type="number" min="2001" max="2026" id="in-y1" value="2026">
-        </label>
-        <label class="field">
-          <span class="sub">Focus Year</span>
-          <input type="number" min="2000" max="2026" id="in-fy" value="2026">
-        </label>
-        <label class="field">
-          <span class="sub">Focus Month</span>
-          <select id="in-fm"></select>
-        </label>
-        <label class="field">
-          <span class="sub">Confidence</span>
-          <select id="in-conf">
-            <option value="low">All (Low+)</option>
-            <option value="nominal">Nominal+</option>
-            <option value="high">High Only</option>
-          </select>
-        </label>
-        <div class="query-actions">
-          <button type="submit" class="btn btn-go" id="btn-analyze">Analyze Region</button>
-          <button type="button" class="btn" id="btn-upload-trigger">Upload FIRMS CSV</button>
-          <input type="file" id="csv-file-input" accept=".csv,.txt,text/csv" hidden>
-        </div>
-      </form>
-      <p class="small muted" id="aoi-description"></p>
-      <p class="error" id="global-error" hidden></p>
+      <div class="context-actions">
+        <details id="selection-panel" class="selection-panel glass">
+          <summary>Region &amp; period <span class="small muted" id="selection-label">Choose an area</span></summary>
+          <div class="selection-content">
+            <p class="eyebrow">Generated presets</p>
+            <div id="preset-row" class="preset-row" role="group" aria-label="Generated demonstration presets"></div>
+            <form id="query-form">
+              <div class="form-grid">
+                <label>Latitude<input id="in-lat" type="number" step="any" min="-90" max="90" required></label>
+                <label>Longitude<input id="in-lon" type="number" step="any" min="-180" max="180" required></label>
+                <label>Approx. radius · km<input id="in-radius" type="number" step="any" min="0.1" max="2000" value="60" required></label>
+                <label>Name · optional<input id="in-name" type="text" maxlength="255" placeholder="My region"></label>
+                <label>First year<input id="in-y0" type="number" min="2000" max="2026" value="2000" required></label>
+                <label>Last year<input id="in-y1" type="number" min="2000" max="2026" value="2026" required></label>
+                <label>Focus year<input id="in-fy" type="number" min="2000" max="2026" value="2026" required></label>
+                <label>Focus month<select id="in-fm"></select></label>
+                <label>Confidence filter<select id="in-conf"><option value="low">Low or higher</option><option value="nominal">Nominal or higher</option><option value="high">High only</option></select></label>
+              </div>
+              <p class="small muted" id="selection-help">Point selections use an approximate rectangular buffer. Custom geometry uses generated demo data.</p>
+              <div class="form-actions"><button class="btn btn-primary" id="btn-analyze" type="submit">Analyze selected region</button><button class="btn" id="btn-point-mode" type="button">Use these coordinates</button></div>
+            </form>
+            <details class="geometry-input"><summary>Paste GeoJSON · keyboard alternative to drawing</summary><label for="geojson-input" class="small">Point, Polygon, MultiPolygon or FeatureCollection</label><textarea id="geojson-input" rows="5" spellcheck="false" placeholder='{"type":"Polygon","coordinates":[…]}'></textarea><button type="button" class="btn" id="btn-geojson">Analyze this geometry</button></details>
+          </div>
+        </details>
+        <button type="button" class="btn" id="btn-upload-trigger">Upload FIRMS CSV</button>
+        <input type="file" id="csv-file-input" accept=".csv,text/csv" hidden>
+        <label class="audience-picker">Audience<select id="persona-select"></select></label>
+      </div>
+      <p class="small muted" id="data-note">Presets are invented fixtures. Uploads establish detections, not complete coverage or absence of fire. <a href="/static/samples/generated-firms-demo.csv" download>Try a synthetic CSV</a>.</p>
+      <div class="scenario-banner" id="scenario-banner" hidden><div><strong>Hypothetical metric</strong><p class="small">The focus metric is modeled at its historical median. Observed source records, HHE, raw counts and FRP stay unchanged.</p></div><button class="btn" id="btn-clear-scenario" type="button">Return to observed metric</button></div>
     </section>
 
-    <!-- VIEW 1: BURNING CALENDAR & AOI MAP -->
-    <div id="view-calendar" class="view stack-24">
-      <!-- Briefing & 4 Key KPIs -->
-      <section class="briefing-grid">
-        <article class="panel card briefing-card">
-          <div class="card-head">
-            <span class="eyebrow" id="briefing-role-label">Early Warning &amp; Emergency Responder</span>
-            <span class="mono sub" id="briefing-rules-ver"></span>
-          </div>
-          <h2 class="h-brief" id="briefing-headline">Loading harmonization engine...</h2>
-          <ul class="bullet-list" id="briefing-actions"></ul>
-          <div class="findings-list" id="findings-list"></div>
-        </article>
+    <section id="view-calendar" class="view stack" aria-label="Burning calendar">
+      <div class="metric-grid" id="kpi-grid">
+        <article class="metric"><p class="eyebrow">Focus activity</p><strong id="kpi-focus-val" class="metric-value mono">—</strong><p id="kpi-focus-sub" class="small muted">Reference comparison loading</p></article>
+        <article class="metric"><p class="eyebrow">Robust anomaly</p><strong id="kpi-z-val" class="metric-value mono">—</strong><p id="kpi-z-sub" class="small muted">Descriptive index, not probability</p></article>
+        <article class="metric"><p class="eyebrow">Reference coverage</p><strong id="kpi-baseline-val" class="metric-value mono">—</strong><p id="kpi-baseline-sub" class="small muted">Same-month periods · 2001–2020</p></article>
+        <article class="metric"><p class="eyebrow">Summed observed FRP</p><strong id="kpi-frp-val" class="metric-value mono">—</strong><p id="kpi-frp-sub" class="small muted">Sampled power across observations</p></article>
+      </div>
 
-        <div class="kpi-grid" id="kpi-grid">
-          <div class="panel kpi">
-            <span class="sub">Focus vs. 2001–2020 Median</span>
-            <strong class="kpi-val mono" id="kpi-focus-val">--</strong>
-            <span class="small" id="kpi-focus-sub">--</span>
-          </div>
-          <div class="panel kpi">
-            <span class="sub">Robust Anomaly (Z / Rank)</span>
-            <strong class="kpi-val mono" id="kpi-z-val">--</strong>
-            <span class="small" id="kpi-z-sub">--</span>
-          </div>
-          <div class="panel kpi">
-            <span class="sub">2012 Bridge Bias Reduction</span>
-            <strong class="kpi-val mono" id="kpi-bias-val">--</strong>
-            <span class="small" id="kpi-bias-sub">--</span>
-          </div>
-          <div class="panel kpi">
-            <span class="sub">Nocturnal Share &amp; Radiative Power</span>
-            <strong class="kpi-val mono" id="kpi-frp-val">--</strong>
-            <span class="small" id="kpi-frp-sub">--</span>
-          </div>
-        </div>
-      </section>
+      <article class="panel calendar-card">
+        <div class="card-head"><div><p class="eyebrow">THE LONG VIEW</p><h2 id="cal-title">Monthly activity across sensor eras</h2></div><div class="calendar-actions"><label class="compact-label">Color ramp<select id="ramp-select"></select></label><button class="btn" type="button" id="btn-toggle-granularity" aria-pressed="false">Show 36-dekad profile</button></div></div>
+        <div class="analysis-toolbar"><div class="switch-row"><button class="switch" id="btn-toggle-mode" type="button" role="switch" aria-checked="true"><i aria-hidden="true"></i><span id="mode-switch-label">Harmonized index</span></button><button class="switch" id="btn-toggle-flare" type="button" role="switch" aria-checked="true"><i aria-hidden="true"></i><span id="flare-switch-label">Non-vegetation guard on</span></button></div><span class="small muted" id="calendar-window"></span></div>
+        <div id="ramp-legend" class="ramp-legend"></div>
+        <p class="small muted" id="calendar-help">Scroll for all years. Arrow keys explore cells; Enter selects the comparison period. A dash means missing evidence.</p>
+        <div id="calendar-container" class="calendar-scroll" tabindex="0" role="region" aria-label="Monthly activity matrix; scroll horizontally for all years"></div>
+        <div id="cell-inspector" class="cell-inspector" aria-live="polite">Select or focus a cell to inspect its evidence.</div>
+      </article>
 
-      <!-- Calendar + Interactive AOI Map Split -->
-      <section class="workspace-split">
-        <!-- Burning Activity Calendar Card -->
-        <article class="panel card calendar-card">
-          <div class="card-head wrap-head">
-            <div class="stack-4">
-              <span class="eyebrow eyebrow-signal">2000–2026 Burning Activity Calendar</span>
-              <h2 class="h-card" id="cal-title">Harmonized Hotspot Equivalents (HHE) by Year &amp; Month</h2>
-            </div>
-            <div class="switch-row">
-              <button type="button" class="btn btn-sm" id="btn-toggle-granularity">View: Monthly Matrix</button>
-              <button type="button" class="switch-pill" id="btn-toggle-mode" role="switch" aria-checked="true">
-                <span class="switch-dot"></span>
-                <span id="mode-switch-label">Mode: Harmonized (HHE)</span>
-              </button>
-              <button type="button" class="switch-pill" id="btn-toggle-flare" role="switch" aria-checked="true">
-                <span class="switch-dot"></span>
-                <span id="flare-switch-label">Flare Filter: ON</span>
-              </button>
-            </div>
-          </div>
+      <details class="panel briefing-panel"><summary>Interpretation &amp; decision rules <span class="small muted" id="briefing-role-label"></span></summary><div class="details-body"><p class="mono small muted" id="briefing-rules-ver"></p><h2 id="briefing-headline">Evidence summary</h2><ul id="briefing-actions" class="bullet-list"></ul><div id="findings-list" class="finding-list"></div></div></details>
 
-          <div class="ramp-legend" id="ramp-legend"></div>
+      <div class="two-column">
+        <article class="panel"><div class="card-head"><div><p class="eyebrow">SEASONAL CONTEXT</p><h2 id="season-chart-title">Focus year &amp; historical distribution</h2></div></div><div class="chart-scroll" id="season-chart-box"></div><div id="season-summary" class="season-summary"></div><details class="data-alternative"><summary>Seasonal values as a table</summary><div id="season-data" class="table-scroll"></div></details></article>
+        <article class="panel"><div class="card-head"><div><p class="eyebrow">SPATIAL CONTEXT</p><h2>AOI &amp; sampled cell windows</h2></div><div class="map-actions"><button class="btn" type="button" id="btn-draw-mode" aria-pressed="false">Draw polygon</button><button class="btn" type="button" id="btn-draw-undo" hidden>Undo point</button><button class="btn btn-primary" type="button" id="btn-draw-apply" hidden>Use polygon</button></div></div><div id="map-viewport" class="map-viewport"></div><p id="map-hover-readout" class="small muted">A coordinate preview, without a basemap. Sampled points are not burned area.</p><div id="map-legend" class="map-legend"></div><details class="data-alternative"><summary>Sampled events as a table</summary><div id="map-data" class="table-scroll"></div></details></article>
+      </div>
+      <div class="two-column">
+        <article class="panel"><p class="eyebrow">SOURCE CONTEXT</p><h2>Thermal patterns &amp; supplied types</h2><div id="attribution-bars" class="attribution-bars"></div><p class="small muted">Thermal patterns do not establish wildfire, agricultural burning or an industrial cause.</p><p class="small muted" id="quality-note"></p></article>
+        <article class="panel"><div class="card-head"><div><p class="eyebrow">MODELED OPPORTUNITIES</p><h2>Approximate satellite schedule</h2></div><span class="tag neutral">MODEL</span></div><p class="small muted" id="passes-note"></p><div class="table-scroll schedule-scroll" tabindex="0" role="region" aria-label="All modeled opportunities; scroll to explore the complete schedule"><table class="data-table"><caption class="sr-only">Modeled observation opportunities using the stored snapshot reference</caption><thead><tr><th scope="col">Satellite</th><th scope="col">UTC start</th><th scope="col">Branch</th><th scope="col">Elevation</th></tr></thead><tbody id="passes-tbody"></tbody></table></div><details class="data-alternative"><summary>Model assumptions &amp; excluded sources</summary><p class="small muted" id="passes-limits"></p><ul id="passes-excluded" class="small"></ul></details></article>
+      </div>
+      <section class="panel export-bar" aria-label="Download complete snapshot evidence"><div><p class="eyebrow">KEEP THE EVIDENCE</p><h2>Take this snapshot with you</h2><p class="small muted">Complete events and geometry. Unsigned hashes check consistency; source authenticity is unestablished.</p></div><div class="export-actions"><a class="btn" id="dl-hotspots-csv" aria-disabled="true" download>Hotspots CSV</a><a class="btn" id="dl-calendar-csv" aria-disabled="true" download>Calendar CSV</a><a class="btn" id="dl-geojson" aria-disabled="true" download>GeoJSON</a><a class="btn" id="dl-ics" aria-disabled="true" download>Modeled schedule .ics</a><a class="btn" id="dl-receipt" aria-disabled="true" download>Receipt JSON</a><a class="btn btn-primary" id="dl-package" aria-disabled="true" download>Audit ZIP</a></div></section>
+    </section>
 
-          <div class="calendar-scroll" id="calendar-container"></div>
+    <section id="view-bridge" class="view stack" aria-label="Sensor bridge" hidden>
+      <article class="panel"><p class="eyebrow">CROSS-SENSOR CONTEXT</p><h2 class="section-title">How the bridge changes the index</h2><p class="lead">MODIS and VIIRS detect different footprints. FireTrace groups cell windows and compares supplied overlap months using an explicit multiplier. The result is an occupancy index; correlation does not validate physical fire activity.</p><div class="chart-scroll" id="bridge-chart-box"></div><p class="small muted">Separate axes preserve units: raw detections above, HHE below. Dashed markers show the 2012 and 2018 transitions.</p></article>
+      <div id="bridge-audit-kpis" class="metric-grid"></div>
+      <div class="two-column"><article class="panel"><p class="eyebrow">BEFORE / AFTER</p><h2>Transition diagnostics</h2><div id="transition-audits" class="finding-list"></div></article><article class="panel"><p class="eyebrow">POOLED VS. ERA RATIOS</p><h2>Overlap agreement</h2><p class="small muted" id="calibration-note"></p><div id="era-table" class="table-scroll"></div></article></div>
+      <article class="panel"><h2>Annual sensor evidence</h2><p class="small muted">Partial totals remain partial. Trend calculations use complete declared years only.</p><div class="table-scroll"><table class="data-table"><thead><tr><th scope="col">Year</th><th scope="col">Raw MODIS</th><th scope="col">Raw VIIRS</th><th scope="col">HHE</th><th scope="col">Summed FRP · MW</th><th scope="col">Coverage</th></tr></thead><tbody id="bridge-tbody"></tbody></table></div></article>
+    </section>
 
-          <div class="cell-inspector mono" id="cell-inspector">
-            Click any cell to inspect or set as Focus Month. Hover for MODIS/VIIRS breakdown, historical median, and Z_robust.
-          </div>
-        </article>
+    <section id="view-audit" class="view stack" aria-label="Evaluator and receipt" hidden>
+      <article class="panel"><p class="eyebrow">CHANGE ONE ASSUMPTION</p><h2 class="section-title">Counterfactual laboratory</h2><p class="lead">Each experiment creates a new snapshot and retains the original. A median scenario changes the hypothetical metric; it does not invent observations.</p><div id="whatif-grid" class="card-grid"></div></article>
+      <article class="panel"><p class="eyebrow">EVIDENCE &amp; LIMITS</p><h2>Four automatic diagnostics</h2><p class="small muted">Diagnostic results apply to these supplied inputs and demonstration methods.</p><div id="refutation-grid" class="card-grid"></div></article>
+      <article class="panel"><p class="eyebrow">DETERMINISTIC PIPELINE</p><h2>Five stages, one trace</h2><p class="small muted">Extractor → Planner → Investigator → Evaluator → Writer. Stage timestamps use the snapshot reference, not execution time.</p><div class="table-scroll"><table class="data-table"><thead><tr><th scope="col">Stage</th><th scope="col">Action</th><th scope="col">Input</th><th scope="col">Output</th><th scope="col">Rows</th></tr></thead><tbody id="trace-tbody"></tbody></table></div></article>
+      <article class="panel"><div class="card-head"><div><p class="eyebrow">UNSIGNED CONSISTENCY RECORD</p><h2>Receipt &amp; nine query hashes</h2></div><button type="button" class="btn" id="btn-load-receipt">Inspect receipt JSON</button></div><p class="small muted">Hashes detect inconsistent contents and reproduce the decision rules. They do not authenticate NASA data or establish scientific truth.</p><p class="mono small" id="verify-cli-hint"></p><div class="table-scroll"><table class="data-table"><thead><tr><th scope="col">Query</th><th scope="col">Evidence</th><th scope="col">Rows</th><th scope="col">SHA-256</th></tr></thead><tbody id="queries-tbody"></tbody></table></div><pre id="receipt-json-box" class="code-box" tabindex="0" hidden></pre></article>
+    </section>
 
-        <!-- Interactive AOI Spatial Map Card -->
-        <article class="panel card map-card">
-          <div class="card-head wrap-head">
-            <div class="stack-4">
-              <span class="eyebrow">1 km Equal-Area Grid &amp; AOI Boundary</span>
-              <h2 class="h-card" id="map-card-title">Spatial Hotspot Distribution</h2>
-            </div>
-            <div class="map-btn-row">
-              <button type="button" class="btn btn-sm" id="btn-draw-mode" aria-pressed="false">Draw Polygon</button>
-              <button type="button" class="btn btn-sm" id="btn-draw-undo" hidden>Undo</button>
-              <button type="button" class="btn btn-sm" id="btn-draw-apply" hidden>Run Drawn AOI</button>
-            </div>
-          </div>
-          <div class="map-viewport" id="map-viewport"></div>
-          <div class="map-legend-row small muted">
-            <span><i class="dot dot-modis"></i> MODIS 1 km</span>
-            <span><i class="dot dot-viirs"></i> VIIRS 375 m</span>
-            <span><i class="dot dot-both"></i> Co-detected (Deduped)</span>
-            <span><i class="dot dot-flare"></i> Static Flare</span>
-          </div>
-          <p class="mono sub" id="map-hover-readout">Hover over a hotspot cell or click "Draw Polygon" to sketch a custom boundary.</p>
-        </article>
-      </section>
+    <section id="view-manifesto" class="view stack" aria-label="Schemas and methods" hidden>
+      <article class="panel"><p class="eyebrow">A COMMON LANGUAGE</p><h1 class="section-title">Schemas &amp; methods</h1><p class="lead">Inspect how heterogeneous FIRMS-shaped rows become a shared evidence model. Missing values, supplied source types and heuristic transformations remain explicit.</p><div class="inline-actions"><button id="btn-load-manifesto" class="btn" type="button">Reload mappings</button><a class="btn" href="/api/methods/science" target="_blank" rel="noopener">Science notes</a><a class="btn" href="/api/methods/inputs" target="_blank" rel="noopener">Input contract</a></div><p class="small muted" id="manifesto-status" role="status"></p><div id="manifesto-sources" class="card-grid"></div></article>
+      <div id="manifesto-targets" class="stack"></div>
+    </section>
 
-      <!-- Seasonal Climatology Fan + Attribution & Overpass Predictions -->
-      <section class="analytics-grid">
-        <article class="panel card">
-          <div class="card-head">
-            <div class="stack-4">
-              <span class="eyebrow">Seasonal Climatology Envelope</span>
-              <h2 class="h-card" id="season-chart-title">Focus Year vs. 2001–2020 Historical Median, IQR &amp; P95</h2>
-            </div>
-          </div>
-          <div class="svg-box" id="season-chart-box"></div>
-        </article>
-
-        <article class="panel card">
-          <div class="card-head">
-            <div class="stack-4">
-              <span class="eyebrow">Fire Regime Attribution &amp; Upcoming Satellites</span>
-              <h2 class="h-card">Wildfire vs. Agricultural Burns &amp; Next Overpasses</h2>
-            </div>
-          </div>
-          <div class="attribution-bars" id="attribution-bars"></div>
-          <div class="passes-wrap">
-            <h3 class="sub" style="margin:0 0 8px">Next MODIS &amp; VIIRS Overpasses (Terra, Aqua, S-NPP, NOAA-20/21)</h3>
-            <div class="table-scroll">
-              <table class="data-table mono" id="passes-table">
-                <thead>
-                  <tr><th>Satellite</th><th>Sensor</th><th>UTC Time</th><th>Pass</th><th>Max Elev</th></tr>
-                </thead>
-                <tbody id="passes-tbody"></tbody>
-              </table>
-            </div>
-          </div>
-        </article>
-      </section>
-
-      <!-- Exports & Downloads Bar -->
-      <section class="panel export-bar" aria-label="Downloadable Outputs">
-        <div class="stack-4">
-          <span class="eyebrow eyebrow-signal">Export Analytics &amp; Cryptographic Evidence</span>
-          <p class="small muted">Download sensor-harmonized hotspots, the 27-year calendar matrix, GIS GeoJSON, satellite pass .ics, or the full offline-verifiable audit zip.</p>
-        </div>
-        <div class="export-actions">
-          <a class="btn" id="dl-hotspots-csv" download>Hotspots CSV</a>
-          <a class="btn" id="dl-calendar-csv" download>Calendar CSV</a>
-          <a class="btn" id="dl-geojson" download>Hotspots GeoJSON</a>
-          <a class="btn" id="dl-ics" download>Watch Calendar .ics</a>
-          <a class="btn" id="dl-receipt" download>Receipt JSON</a>
-          <a class="btn btn-go" id="dl-package" download>Download Audit ZIP</a>
-        </div>
-      </section>
-    </div>
-
-    <!-- VIEW 2: SENSOR HARMONIZATION BRIDGE -->
-    <div id="view-bridge" class="view stack-24" hidden>
-      <section class="panel card">
-        <div class="card-head wrap-head">
-          <div class="stack-4">
-            <span class="eyebrow eyebrow-signal">2000–2026 Cross-Sensor Continuity Bridge</span>
-            <h2 class="h-section" style="font-size:28px">Eliminating the 2012 &amp; 2018 VIIRS Resolution Step-Jump</h2>
-          </div>
-          <span class="mono tag tag-NOMINAL_REGIME" id="bridge-r2-badge">R² = --</span>
-        </div>
-        <p class="lead">
-          Raw active fire counts jump sharply in 2012 (Suomi NPP) and 2018 (NOAA-20) because 375 m VIIRS resolves small burns
-          and afternoon satellites co-detect the same flame front. FireTrace clusters detections onto a 1 km equal-area grid,
-          deduplicates afternoon train passes, and bridges VIIRS via overlap calibration factor <span class="mono">κ</span>.
-        </p>
-        <div class="svg-box svg-box-tall" id="bridge-chart-box"></div>
-      </section>
-
-      <section class="kpi-grid" id="bridge-audit-kpis"></section>
-
-      <section class="panel card">
-        <h3 class="h-card">Annual Raw Sensor Counts vs. Harmonized Hotspot Equivalents (2000–2026)</h3>
-        <div class="table-scroll">
-          <table class="data-table mono">
-            <thead>
-              <tr>
-                <th>Year</th>
-                <th>Raw MODIS</th>
-                <th>Raw VIIRS</th>
-                <th>Raw Total</th>
-                <th>Harmonized HHE</th>
-                <th>FRP (MW)</th>
-                <th>Static Flares</th>
-              </tr>
-            </thead>
-            <tbody id="bridge-tbody"></tbody>
-          </table>
-        </div>
-      </section>
-    </div>
-
-    <!-- VIEW 3: EVALUATOR & AUDIT RECEIPT -->
-    <div id="view-audit" class="view stack-24" hidden>
-      <section class="panel card">
-        <div class="card-head">
-          <span class="eyebrow eyebrow-signal">Counterfactual What-If Laboratory</span>
-          <h2 class="h-card">Test What Changes the Deterministic Verdict</h2>
-        </div>
-        <div class="whatif-grid" id="whatif-grid"></div>
-      </section>
-
-      <section class="panel card">
-        <div class="card-head">
-          <span class="eyebrow">Evaluator Adversarial Checks</span>
-          <h2 class="h-card">Four Scientific Refutations Tested Automatically</h2>
-        </div>
-        <div class="refutation-grid" id="refutation-grid"></div>
-      </section>
-
-      <section class="panel card">
-        <div class="card-head">
-          <span class="eyebrow">Five-Agent Execution Trace</span>
-          <h2 class="h-card">Extractor → Planner → Investigator → Evaluator → Writer</h2>
-        </div>
-        <div class="table-scroll">
-          <table class="data-table mono">
-            <thead>
-              <tr><th>Agent</th><th>Action</th><th>Input Summary</th><th>Output Summary</th><th>Rows</th><th>Status</th></tr>
-            </thead>
-            <tbody id="trace-tbody"></tbody>
-          </table>
-        </div>
-      </section>
-
-      <section class="panel card">
-        <div class="card-head wrap-head">
-          <div class="stack-4">
-            <span class="eyebrow eyebrow-signal">Offline Cryptographic Verification</span>
-            <h2 class="h-card">Verdict Receipt &amp; Query Table Hashes (Q0–Q8)</h2>
-          </div>
-          <button type="button" class="btn btn-sm" id="btn-load-receipt">Inspect Receipt JSON</button>
-        </div>
-        <p class="mono small" id="verify-cli-hint"></p>
-        <div class="table-scroll">
-          <table class="data-table mono">
-            <thead><tr><th>Query</th><th>Description</th><th>Rows</th><th>SHA-256 Digest</th></tr></thead>
-            <tbody id="queries-tbody"></tbody>
-          </table>
-        </div>
-        <pre class="code-box mono" id="receipt-json-box" hidden></pre>
-      </section>
-    </div>
-
-    <!-- VIEW 4: SCHEMA MAPPING MANIFESTO -->
-    <div id="view-manifesto" class="view stack-24" hidden>
-      <section class="panel card">
-        <span class="eyebrow eyebrow-signal">Semantic Schema Mapping Manifesto</span>
-        <h2 class="h-section" style="font-size:28px">Source FIRMS Schemas → Harmonized Target Tables</h2>
-        <p class="lead">
-          Every field transformation between MODIS C6.1, VIIRS Suomi NPP, and VIIRS NOAA-20/21 is strictly typed,
-          null-standardized, and auditable before execution.
-        </p>
-        <div id="manifesto-sources" class="refutation-grid"></div>
-      </section>
-      <div id="manifesto-targets" class="stack-24"></div>
-    </div>
-
-    <!-- VIEW 5: JUDGE & TRAP BENCH -->
-    <div id="view-bench" class="view stack-24" hidden>
-      <section class="panel card">
-        <div class="card-head wrap-head">
-          <div class="stack-4">
-            <span class="eyebrow eyebrow-signal">Automated Verification Suite</span>
-            <h2 class="h-section" style="font-size:28px">12-Case Scientific &amp; Trap Benchmark</h2>
-          </div>
-          <button type="button" class="btn btn-go" id="btn-run-bench">Run All 12 Bench Cases</button>
-        </div>
-        <p class="lead">
-          Tests real-world regimes, the 2012 VIIRS raw-count trap, the Basra gas-flare trap, custom GeoJSON polygons,
-          and sensitivity checks through the identical deterministic engine.
-        </p>
-        <div id="bench-summary" class="mono small"></div>
-        <div class="table-scroll">
-          <table class="data-table">
-            <thead>
-              <tr><th>Case</th><th>Scenario</th><th>Expected</th><th>Actual</th><th>Z_robust</th><th>Bias Red %</th><th>Status</th></tr>
-            </thead>
-            <tbody id="bench-tbody"></tbody>
-          </table>
-        </div>
-      </section>
-    </div>
+    <section id="view-bench" class="view stack" aria-label="Generated trap benchmarks" hidden>
+      <article class="panel"><div class="card-head"><div><p class="eyebrow">REPRODUCIBLE DEMONSTRATIONS</p><h1 class="section-title">Twelve scenarios. Explicit expectations.</h1></div><button type="button" class="btn btn-primary" id="btn-run-bench">Run all 12 cases</button></div><p class="lead">Generated scenarios exercise sensor transitions, supplied static sources, geometry and sensitivity. Passing them checks this demo's behavior, not real-world scientific validity.</p><p id="bench-summary" class="small" role="status" aria-live="polite">Ready to run. Cases can take a little time.</p><div class="table-scroll"><table class="data-table"><thead><tr><th scope="col">Case</th><th scope="col">Scenario</th><th scope="col">Expected</th><th scope="col">Actual</th><th scope="col">Robust Z</th><th scope="col">Status</th></tr></thead><tbody id="bench-tbody"></tbody></table></div></article>
+    </section>
   </main>
-
-  <footer class="foot">
-    <div class="foot-in small muted">
-      <span>FireTrace · Built for 2026 NASA Space Apps Challenge (Harmonization of MODIS and VIIRS Hot Spots)</span>
-      <span>Architecture: Field Instrument · Deterministic Rules &amp; Offline Cryptographic Receipt</span>
-    </div>
-  </footer>
+  <footer class="foot"><p>FireTrace · NASA Space Apps team project · Offline demonstration</p><p><a href="/api/methods/receipts" target="_blank" rel="noopener">Receipt limits</a><a href="/api/methods/exports" target="_blank" rel="noopener">Export &amp; model notes</a></p></footer>
+  <noscript><p class="error">This interactive dashboard needs JavaScript. The Python CLI can analyze inputs and export evidence without a browser.</p></noscript>
 </body>
 </html>
 

@@ -1,0 +1,66 @@
+{
+  "name": "FireTrace — Teal / Ember",
+  "version": 1,
+  "color": {
+    "bg": "#08151b",
+    "surface": "#10242c",
+    "raised": "#1b3540",
+    "well": "#071218",
+    "text": "#edf5f5",
+    "muted": "#bfd0d4",
+    "subtle": "#a0b8bf",
+    "line": "#2b4651",
+    "line-strong": "#587b88",
+    "accent": "#83decc",
+    "accent-ink": "#08221d",
+    "accent-soft": "#173d39",
+    "ember": "#ffb087",
+    "ember-soft": "#40291f",
+    "critical": "#ffb08b",
+    "critical-bg": "#43291f",
+    "elevated": "#f3d185",
+    "elevated-bg": "#3b321d",
+    "nominal": "#9adfc3",
+    "nominal-bg": "#193c31",
+    "unverified": "#ced8e1",
+    "unverified-bg": "#2c3745",
+    "modis": "#7fc8f4",
+    "viirs": "#ffb087",
+    "both": "#83decc",
+    "excluded": "#b9bac8",
+    "focus": "#e6e9a0",
+    "glass": "rgba(16, 36, 44, 0.88)",
+    "white": "#ffffff",
+    "black": "#000000"
+  },
+  "font": {
+    "sans": "Geist, 'Segoe UI', sans-serif",
+    "mono": "'Geist Mono', 'Cascadia Code', Consolas, monospace"
+  },
+  "font-size": {
+    "caption": "12px",
+    "small": "14px",
+    "body": "16px",
+    "title": "22px",
+    "heading": "30px",
+    "metric": "28px"
+  },
+  "space": {
+    "1": "4px", "2": "8px", "3": "12px", "4": "16px",
+    "5": "20px", "6": "24px", "8": "32px", "10": "40px", "12": "48px"
+  },
+  "radius": {"small": "6px", "control": "10px", "panel": "16px", "pill": "999px"},
+  "shadow": {
+    "glass": "0 8px 24px rgba(0, 0, 0, 0.16), inset 0 1px 0 rgba(237, 245, 245, 0.06)",
+    "floating": "0 12px 32px rgba(0, 0, 0, 0.28)"
+  },
+  "motion": {"fast": "120ms", "normal": "180ms", "ease": "cubic-bezier(0.2, 0, 0, 1)"},
+  "breakpoint": {"mobile": "640px", "tablet": "1000px", "wide": "1440px"},
+  "layout": {"max": "1600px", "target": "44px"},
+  "ramp": {
+    "viridis": ["#440154", "#3b528b", "#21918c", "#5ec962", "#fde725"],
+    "cividis": ["#00204c", "#414d6b", "#7c7b78", "#bdaf6f", "#fdea45"],
+    "ylorrd": ["#451216", "#9c2925", "#e75b31", "#ffae52", "#fff0a3"],
+    "diverging": ["#235b91", "#77b8d9", "#243943", "#e7a271", "#bb442a"]
+  }
+}
