@@ -115,7 +115,7 @@ def harmonize_records(raw_records: list[dict[str, Any]], aoi: dict[str, Any], *,
             "frp_total_mw": round(math.fsum(powers), 6) if powers else None,
             "cell_events": len(included),
         }
-    covered = {tuple(month) for month in coverage["recorded_months"] + coverage["complete_months"]}
+    covered = {tuple(month) for month in coverage["complete_months"]}
     transitions = [_transition_audit(by_year, covered, year) for year in (2012, 2018)]
     categories = defaultdict(int)
     for event in events:

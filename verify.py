@@ -36,6 +36,26 @@ def _receipt_datetime(value):
 
 def _snapshot_problems(receipt, calendar):
     problems = []
+    if receipt.get("rules_version") == RULES_VERSION:
+        if "previous_month_context" not in calendar:
+            problems.append("calendar lacks the required preceding-month rule context")
+        else:
+            focus = calendar["focus_comparison"]
+            expected = (focus["year"] - 1, 12) if focus["month"] == 1 else (focus["year"], focus["month"] - 1)
+            previous = calendar["previous_month_context"]
+            if previous is None:
+                if expected[0] >= 2000:
+                    problems.append("preceding-month context is missing inside the supported archive")
+            elif not isinstance(previous, dict):
+                raise ValueError("preceding-month context must be an object or null")
+            elif not {"year", "month", "is_observed", "z_robust", "month_name"} <= previous.keys() or type(previous["is_observed"]) is not bool:
+                raise ValueError("preceding-month context has malformed rule fields")
+            elif (previous.get("year"), previous.get("month")) != expected:
+                problems.append("preceding-month context has the wrong calendar period")
+            else:
+                visible = next((c for c in calendar["cells"] if (c["year"], c["month"]) == expected), None)
+                if visible is not None and sha256_of(visible) != sha256_of(previous):
+                    problems.append("preceding-month context disagrees with its calendar cell")
     if "provenance" in receipt:
         if not isinstance(receipt["provenance"], dict):
             raise ValueError("Source provenance must be an object")

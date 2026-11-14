@@ -1,8 +1,8 @@
 {
   "receipt_version": "firetrace-receipt-v2",
-  "run_id": "ft-6d920c0f65d11659e92d218f",
-  "rules_version": "2026-11-14.2",
-  "rules_sha256": "1ebcf5183104a3fec7a8b87ca818318cc083ecb1a33b444d5ddcf208d256af41",
+  "run_id": "ft-1492674bc6569b383f457725",
+  "rules_version": "2026-11-15.3",
+  "rules_sha256": "b5a46d2f062d05eecd0586238d457166c9636b2f661ee45b0d71b952fc4f2eb8",
   "aoi": {
     "aoi_id": "AOI-FLR",
     "name": "Basra Industrial Flare Zone",
@@ -1920,7 +1920,35 @@
         "frp_total_mw": 1149.7
       }
     ],
-    "cells_sha256": "6b15e32115f5ebf22934b35542f1dfa74212845d7e2711496fb71cda59746cc3"
+    "cells_sha256": "6b15e32115f5ebf22934b35542f1dfa74212845d7e2711496fb71cda59746cc3",
+    "previous_month_context": {
+      "aoi_id": "AOI-FLR",
+      "year": 2026,
+      "month": 7,
+      "month_name": "Jul",
+      "is_observed": true,
+      "is_complete": true,
+      "coverage_status": "complete",
+      "value": 0.8,
+      "hhe_total": 0.8,
+      "raw_total": 1,
+      "raw_modis": 1,
+      "raw_viirs": 0,
+      "frp_total_mw": 84.2,
+      "frp_measured_events": 1,
+      "frp_missing_events": 0,
+      "night_share": 1.0,
+      "hist_median_hhe": 1.0,
+      "hist_mean_hhe": 0.892247,
+      "hist_iqr_hhe": 0.244195,
+      "hist_p90_hhe": 1.144195,
+      "hist_p95_hhe": 1.144195,
+      "anomaly_abs": -0.2,
+      "anomaly_pct": -20.0,
+      "z_robust": -0.4,
+      "empirical_percentile": 25.0,
+      "severity_band": "nominal"
+    }
   },
   "sensor_calibration_audit": {
     "aoi_id": "AOI-FLR",
@@ -2167,10 +2195,38 @@
             11
           ],
           "is_peak_season": false,
-          "rank_in_history": 16
+          "rank_in_history": 16,
+          "previous_month_context": {
+            "aoi_id": "AOI-FLR",
+            "year": 2026,
+            "month": 7,
+            "month_name": "Jul",
+            "is_observed": true,
+            "is_complete": true,
+            "coverage_status": "complete",
+            "value": 0.8,
+            "hhe_total": 0.8,
+            "raw_total": 1,
+            "raw_modis": 1,
+            "raw_viirs": 0,
+            "frp_total_mw": 84.2,
+            "frp_measured_events": 1,
+            "frp_missing_events": 0,
+            "night_share": 1.0,
+            "hist_median_hhe": 1.0,
+            "hist_mean_hhe": 0.892247,
+            "hist_iqr_hhe": 0.244195,
+            "hist_p90_hhe": 1.144195,
+            "hist_p95_hhe": 1.144195,
+            "anomaly_abs": -0.2,
+            "anomaly_pct": -20.0,
+            "z_robust": -0.4,
+            "empirical_percentile": 25.0,
+            "severity_band": "nominal"
+          }
         }
       ],
-      "sha256": "08bd4563a781be21605f1393cc7f9b74a837a8e0424ae777969323bb20c05b42"
+      "sha256": "f46b4da370c604f45fb40dff26436e22f138fae9e9d9ec10b6d0d33b65f84370"
     },
     {
       "query_id": "Q8",
@@ -2202,7 +2258,7 @@
       ]
     }
   ],
-  "verdict_sha256": "6f3c247ca814e3285baa13de477736d2815024f81c4510e4a0109b6e17bcfaa0",
+  "verdict_sha256": "611f8925f9284617ced1d8bb5d7ca7c2541477914390eae7b42053ceb9b88f07",
   "calendar": {
     "mode": "harmonized",
     "year_start": 2000,
@@ -11288,6 +11344,34 @@
         "severity_band": "missing"
       }
     ],
+    "previous_month_context": {
+      "aoi_id": "AOI-FLR",
+      "year": 2026,
+      "month": 7,
+      "month_name": "Jul",
+      "is_observed": true,
+      "is_complete": true,
+      "coverage_status": "complete",
+      "value": 0.8,
+      "hhe_total": 0.8,
+      "raw_total": 1,
+      "raw_modis": 1,
+      "raw_viirs": 0,
+      "frp_total_mw": 84.2,
+      "frp_measured_events": 1,
+      "frp_missing_events": 0,
+      "night_share": 1.0,
+      "hist_median_hhe": 1.0,
+      "hist_mean_hhe": 0.892247,
+      "hist_iqr_hhe": 0.244195,
+      "hist_p90_hhe": 1.144195,
+      "hist_p95_hhe": 1.144195,
+      "anomaly_abs": -0.2,
+      "anomaly_pct": -20.0,
+      "z_robust": -0.4,
+      "empirical_percentile": 25.0,
+      "severity_band": "nominal"
+    },
     "climatology": [
       {
         "month": 1,
@@ -12188,7 +12272,7 @@
   "verification_scope": "Unsigned reproducibility and internal evidence consistency; not source authentication.",
   "reference_time": "2026-11-14T00:00:00Z",
   "calculation_version": "firetrace-demo-v2",
-  "calculation_sha256": "d6ee76db93396a64f754e889e15e77f9c863a27d72276fb2e2c353954b9b41c5",
+  "calculation_sha256": "35674f9fd4b25a57d2932d33078853f28c339a6d9e8b4be5fc9965eb94ce8ffb",
   "provenance": {
     "source_kind": "generated_demo",
     "source_records_sha256": "8a53b494237d53a69e19a9b6ac3cf580607bc1013d024161186fdfef42ef6146",
@@ -12965,5 +13049,5 @@
     ],
     "note": "Approximate modeled opportunities from nominal solar times, schematic ground-track phase and spherical viewing geometry. No ephemerides, cloud screening, actual instrument scheduling or operational accuracy are supplied. Day/night labels are nominal branches, not computed local illumination. Historical 50-minute NOAA-21/20 spacing is schematic; known source end dates are applied."
   },
-  "receipt_sha256": "0c23d99032cc636010760294af3fbd2b0fd87aed0f543d031241e46744525956"
+  "receipt_sha256": "41e15a850d4ae3dddde7201daae59fde88d4945b18ffba661e87bbe5768ea0eb"
 }

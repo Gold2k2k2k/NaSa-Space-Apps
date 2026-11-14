@@ -78,9 +78,13 @@ python run.py --help
 `--geojson FILE`, confidence/persona/guard, selected years and an explicit
 `--reference-time` are also supported. Snapshot references default to
 `2026-11-14T00:00:00Z`; standalone pass requests default to current UTC.
+The three [example JSON files](examples/) are request bodies for `POST
+/api/analyze`, not a separate CLI input format. Their corresponding current
+receipts are in [output_examples](output_examples/); the generation check below
+replays those requests and compares the saved receipts.
 
 Receipts are **unsigned internal consistency records**. The verifier re-derives
-rules `.2`, query relationships and decision fields; hashes do not authenticate
+rules `.3`, query relationships and decision fields; hashes do not authenticate
 NASA observations. Exit 0 means `VALID`, 1 `TAMPERED`, 2 `UNREADABLE`. Extracting an
 audit ZIP and running `python -S -B verify.py receipt.json` needs only Python's
 standard library. V1 receipts have a documented narrower verification scope.

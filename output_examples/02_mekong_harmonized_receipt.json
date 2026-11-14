@@ -1,8 +1,8 @@
 {
   "receipt_version": "firetrace-receipt-v2",
-  "run_id": "ft-cec58d187cb61f5a150d4a80",
-  "rules_version": "2026-11-14.2",
-  "rules_sha256": "1ebcf5183104a3fec7a8b87ca818318cc083ecb1a33b444d5ddcf208d256af41",
+  "run_id": "ft-22a7eef85fe6a7f54cdbf3bc",
+  "rules_version": "2026-11-15.3",
+  "rules_sha256": "b5a46d2f062d05eecd0586238d457166c9636b2f661ee45b0d71b952fc4f2eb8",
   "aoi": {
     "aoi_id": "AOI-MEK",
     "name": "Mekong Agricultural Belt",
@@ -1920,7 +1920,35 @@
         "frp_total_mw": 5142.957549
       }
     ],
-    "cells_sha256": "dea6f1b1cf25a3786702c1070ddb4c73bf3ce1b45aa1063c053f238d383bc709"
+    "cells_sha256": "dea6f1b1cf25a3786702c1070ddb4c73bf3ce1b45aa1063c053f238d383bc709",
+    "previous_month_context": {
+      "aoi_id": "AOI-MEK",
+      "year": 2026,
+      "month": 2,
+      "month_name": "Feb",
+      "is_observed": true,
+      "is_complete": true,
+      "coverage_status": "complete",
+      "value": 8.473148,
+      "hhe_total": 8.473148,
+      "raw_total": 97,
+      "raw_modis": 9,
+      "raw_viirs": 88,
+      "frp_total_mw": 482.179346,
+      "frp_measured_events": 34,
+      "frp_missing_events": 0,
+      "night_share": 0.112164,
+      "hist_median_hhe": 7.135734,
+      "hist_mean_hhe": 7.594944,
+      "hist_iqr_hhe": 2.65,
+      "hist_p90_hhe": 9.85755,
+      "hist_p95_hhe": 10.645648,
+      "anomaly_abs": 1.337414,
+      "anomaly_pct": 18.74248,
+      "z_robust": 0.68081,
+      "empirical_percentile": 70.0,
+      "severity_band": "nominal"
+    }
   },
   "sensor_calibration_audit": {
     "aoi_id": "AOI-MEK",
@@ -2166,10 +2194,38 @@
             2
           ],
           "is_peak_season": true,
-          "rank_in_history": 4
+          "rank_in_history": 4,
+          "previous_month_context": {
+            "aoi_id": "AOI-MEK",
+            "year": 2026,
+            "month": 2,
+            "month_name": "Feb",
+            "is_observed": true,
+            "is_complete": true,
+            "coverage_status": "complete",
+            "value": 8.473148,
+            "hhe_total": 8.473148,
+            "raw_total": 97,
+            "raw_modis": 9,
+            "raw_viirs": 88,
+            "frp_total_mw": 482.179346,
+            "frp_measured_events": 34,
+            "frp_missing_events": 0,
+            "night_share": 0.112164,
+            "hist_median_hhe": 7.135734,
+            "hist_mean_hhe": 7.594944,
+            "hist_iqr_hhe": 2.65,
+            "hist_p90_hhe": 9.85755,
+            "hist_p95_hhe": 10.645648,
+            "anomaly_abs": 1.337414,
+            "anomaly_pct": 18.74248,
+            "z_robust": 0.68081,
+            "empirical_percentile": 70.0,
+            "severity_band": "nominal"
+          }
         }
       ],
-      "sha256": "a20a473217cea6d41bf97b8554cbe7254757d801fbf42861b6937c90a406846c"
+      "sha256": "98dac8c21b81404bccc2b36397b9f6680955e8161a2157f2f317f0676a69816c"
     },
     {
       "query_id": "Q8",
@@ -2201,7 +2257,7 @@
       ]
     }
   ],
-  "verdict_sha256": "a6242f456d13ec165810e69021f70be1260cf14e25d83f387804373323f5b2cd",
+  "verdict_sha256": "38353832651612c8b10b63ca9db692ce646c9eb3d2dd39a1f46a32c6146f8d38",
   "calendar": {
     "mode": "harmonized",
     "year_start": 2000,
@@ -11287,6 +11343,34 @@
         "severity_band": "missing"
       }
     ],
+    "previous_month_context": {
+      "aoi_id": "AOI-MEK",
+      "year": 2026,
+      "month": 2,
+      "month_name": "Feb",
+      "is_observed": true,
+      "is_complete": true,
+      "coverage_status": "complete",
+      "value": 8.473148,
+      "hhe_total": 8.473148,
+      "raw_total": 97,
+      "raw_modis": 9,
+      "raw_viirs": 88,
+      "frp_total_mw": 482.179346,
+      "frp_measured_events": 34,
+      "frp_missing_events": 0,
+      "night_share": 0.112164,
+      "hist_median_hhe": 7.135734,
+      "hist_mean_hhe": 7.594944,
+      "hist_iqr_hhe": 2.65,
+      "hist_p90_hhe": 9.85755,
+      "hist_p95_hhe": 10.645648,
+      "anomaly_abs": 1.337414,
+      "anomaly_pct": 18.74248,
+      "z_robust": 0.68081,
+      "empirical_percentile": 70.0,
+      "severity_band": "nominal"
+    },
     "climatology": [
       {
         "month": 1,
@@ -12187,7 +12271,7 @@
   "verification_scope": "Unsigned reproducibility and internal evidence consistency; not source authentication.",
   "reference_time": "2026-11-14T00:00:00Z",
   "calculation_version": "firetrace-demo-v2",
-  "calculation_sha256": "d6ee76db93396a64f754e889e15e77f9c863a27d72276fb2e2c353954b9b41c5",
+  "calculation_sha256": "35674f9fd4b25a57d2932d33078853f28c339a6d9e8b4be5fc9965eb94ce8ffb",
   "provenance": {
     "source_kind": "generated_demo",
     "source_records_sha256": "409c13fedf13b80dbcae11cc75040093ec7f5fb6b247448b24580b81a951996d",
@@ -12964,5 +13048,5 @@
     ],
     "note": "Approximate modeled opportunities from nominal solar times, schematic ground-track phase and spherical viewing geometry. No ephemerides, cloud screening, actual instrument scheduling or operational accuracy are supplied. Day/night labels are nominal branches, not computed local illumination. Historical 50-minute NOAA-21/20 spacing is schematic; known source end dates are applied."
   },
-  "receipt_sha256": "083a2ae3b913c25ba01dae626058543918a464b04c29752d02cd06fd3c9c8999"
+  "receipt_sha256": "681b3f35dcbc4401274b12b80f3b3528d519e3dd376af76521e6f3d75047b9d5"
 }

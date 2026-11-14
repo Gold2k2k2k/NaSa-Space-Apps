@@ -57,6 +57,7 @@ def build_receipt(run_data: dict[str, Any]) -> dict[str, Any]:
             "climatology": run_data["calendar"]["climatology"],
             "annual_series": run_data["calendar"]["annual_series"],
             "cells_sha256": sha256_of(run_data["calendar"]["cells"]),
+            "previous_month_context": run_data["calendar"].get("previous_month_context"),
         },
         "sensor_calibration_audit": run_data["sensor_calibration_audit"],
         "queries": queries,

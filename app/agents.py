@@ -139,22 +139,14 @@ def _compute_what_ifs(
     options: dict[str, Any],
     base_decision: dict[str, Any],
     raw_records: list[dict[str, Any]],
+    calendars: dict[str, dict[str, Any]],
     scenario: bool = False,
 ) -> dict[str, Any]:
     """Evaluate key counterfactual experiments so the user can test what flips the verdict."""
     mode = options.get("mode", "harmonized")
     alt_mode = "raw" if mode == "harmonized" else "harmonized"
-    alt_cal = build_burning_calendar(
-        harmonized,
-        aoi,
-        year_start=options["year_start"],
-        year_end=options["year_end"],
-        focus_year=options["focus_year"],
-        focus_month=options["focus_month"],
-        mode=alt_mode,
-    )
-    if scenario and alt_cal["focus_comparison"]["hist_median"] is not None:
-        apply_calendar_scenario(alt_cal)
+    current_calendar = calendars[mode]
+    alt_cal = calendars[alt_mode]
     alt_mode_dec = decide({"aoi": aoi, "calendar": alt_cal, "sensor_calibration_audit": harmonized["sensor_calibration_audit"], "options": options})
 
     # Counterfactual 2: toggle flare_guard (only needs re-harmonizing when flares exist in the AOI)
@@ -185,16 +177,9 @@ def _compute_what_ifs(
         alt_flare_dec = base_decision
 
     # Counterfactual 3: normalize focus month to historical median
-    med_cal = copy.deepcopy(build_burning_calendar(
-        harmonized, aoi,
-        year_start=options["year_start"],
-        year_end=options["year_end"],
-        focus_year=options["focus_year"],
-        focus_month=options["focus_month"],
-        mode=mode,
-    ))
+    med_cal = copy.deepcopy(current_calendar)
     median_available = all(med_cal["focus_comparison"][key] is not None for key in ("value", "hist_median"))
-    if median_available:
+    if median_available and not scenario:
         apply_calendar_scenario(med_cal)
     med_dec = decide({
         "aoi": aoi,
@@ -212,7 +197,7 @@ def _compute_what_ifs(
             "verdict_before": base_decision["verdict"],
             "verdict_after": alt_mode_dec["verdict"],
             "flips_verdict": alt_mode_dec["verdict"] != base_decision["verdict"],
-            "z_before": 0.0 if scenario else build_burning_calendar(harmonized, aoi, year_start=options["year_start"], year_end=options["year_end"], focus_year=options["focus_year"], focus_month=options["focus_month"], mode=mode)["focus_comparison"]["z_robust"],
+            "z_before": current_calendar["focus_comparison"]["z_robust"],
             "z_after": alt_cal["focus_comparison"]["z_robust"],
         },
         {
@@ -277,6 +262,7 @@ def run_investigation(
     if raw_records_override is not None and (not isinstance(raw_records_override, list) or (len(raw_records_override) > 25000 and aoi["source_kind"] != "generated_demo")):
         raise ValueError("Provided records must be an array of at most 25,000 rows")
     raw_records = copy.deepcopy(raw_records_override) if raw_records_override is not None else generate_firms_records(aoi, year_start=2000, year_end=2026)
+    raw_records.sort(key=canonical_json)
     input_summary = summarize_inputs(raw_records)
     source_digest = sha256_of(sorted(raw_records, key=canonical_json))
     calculation = calculation_digest()
@@ -356,7 +342,8 @@ def run_investigation(
         "options": options,
     }
     decision = decide(evidence)
-    what_if = _compute_what_ifs(harmonized, aoi, options, decision, raw_records, scenario)
+    what_if = _compute_what_ifs(harmonized, aoi, options, decision, raw_records,
+                                 {"harmonized": calendar_harm, "raw": calendar_raw}, scenario)
     briefing = _persona_briefing(persona, aoi, active_calendar, decision, harmonized["sensor_calibration_audit"])
 
     trace.append(_trace_line(

@@ -98,7 +98,10 @@ shortest cyclic window containing 90% of positive baseline activity, including
 seasons spanning December/January. Missing or flat profiles leave the season
 undefined. The onset, peak, cessation and duration are descriptive summaries.
 
-Rules version `2026-11-14.2` fixes January's preceding December year, limits
+Rules version `2026-11-15.3` preserves the preceding-month context even when it
+falls outside the selected display window. That separate context is bound into
+Q7 and the receipt; the displayed/exported matrix keeps exactly the requested
+years. It fixes January's preceding December year, limits
 early-onset findings to the two months before the cyclic onset, and treats
 high Z as elevated even when P95 is not exceeded. Nighttime activity does not
 establish crown fire or continuous burning. All verdict names are demo labels.

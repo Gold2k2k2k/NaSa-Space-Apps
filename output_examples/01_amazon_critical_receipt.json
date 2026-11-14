@@ -1,8 +1,8 @@
 {
   "receipt_version": "firetrace-receipt-v2",
-  "run_id": "ft-25a0d915aa1811ae8919f865",
-  "rules_version": "2026-11-14.2",
-  "rules_sha256": "1ebcf5183104a3fec7a8b87ca818318cc083ecb1a33b444d5ddcf208d256af41",
+  "run_id": "ft-e1f7f7c3dbe4c26edb54879a",
+  "rules_version": "2026-11-15.3",
+  "rules_sha256": "b5a46d2f062d05eecd0586238d457166c9636b2f661ee45b0d71b952fc4f2eb8",
   "aoi": {
     "aoi_id": "AOI-AMZ",
     "name": "Amazon Arc — Mato Grosso",
@@ -1920,7 +1920,35 @@
         "frp_total_mw": 21348.018672
       }
     ],
-    "cells_sha256": "3e5ef92770fa87c634064d1f70e78c83f3ba8ef708acf88d73172a084d337c9e"
+    "cells_sha256": "3e5ef92770fa87c634064d1f70e78c83f3ba8ef708acf88d73172a084d337c9e",
+    "previous_month_context": {
+      "aoi_id": "AOI-AMZ",
+      "year": 2026,
+      "month": 8,
+      "month_name": "Aug",
+      "is_observed": true,
+      "is_complete": true,
+      "coverage_status": "complete",
+      "value": 29.857036,
+      "hhe_total": 29.857036,
+      "raw_total": 147,
+      "raw_modis": 34,
+      "raw_viirs": 113,
+      "frp_total_mw": 4554.862251,
+      "frp_measured_events": 66,
+      "frp_missing_events": 0,
+      "night_share": 0.682194,
+      "hist_median_hhe": 18.720857,
+      "hist_mean_hhe": 20.05564,
+      "hist_iqr_hhe": 4.697032,
+      "hist_p90_hhe": 29.14,
+      "hist_p95_hhe": 30.445785,
+      "anomaly_abs": 11.136179,
+      "anomaly_pct": 59.485413,
+      "z_robust": 3.198296,
+      "empirical_percentile": 90.0,
+      "severity_band": "elevated"
+    }
   },
   "sensor_calibration_audit": {
     "aoi_id": "AOI-AMZ",
@@ -2166,10 +2194,38 @@
             10
           ],
           "is_peak_season": true,
-          "rank_in_history": 1
+          "rank_in_history": 1,
+          "previous_month_context": {
+            "aoi_id": "AOI-AMZ",
+            "year": 2026,
+            "month": 8,
+            "month_name": "Aug",
+            "is_observed": true,
+            "is_complete": true,
+            "coverage_status": "complete",
+            "value": 29.857036,
+            "hhe_total": 29.857036,
+            "raw_total": 147,
+            "raw_modis": 34,
+            "raw_viirs": 113,
+            "frp_total_mw": 4554.862251,
+            "frp_measured_events": 66,
+            "frp_missing_events": 0,
+            "night_share": 0.682194,
+            "hist_median_hhe": 18.720857,
+            "hist_mean_hhe": 20.05564,
+            "hist_iqr_hhe": 4.697032,
+            "hist_p90_hhe": 29.14,
+            "hist_p95_hhe": 30.445785,
+            "anomaly_abs": 11.136179,
+            "anomaly_pct": 59.485413,
+            "z_robust": 3.198296,
+            "empirical_percentile": 90.0,
+            "severity_band": "elevated"
+          }
         }
       ],
-      "sha256": "906e8d919c5444947b281afe35fecff632c73d11a7129435532e017de551251f"
+      "sha256": "181cd26cbba3c27a18b93efd412ac688282fd6d008eaf85e39591e78c3e09ad9"
     },
     {
       "query_id": "Q8",
@@ -2211,7 +2267,7 @@
       ]
     }
   ],
-  "verdict_sha256": "3ba8c8417df2d7941fc8553e22a0ca1fa34114830785b761c6d5f4daacadea2e",
+  "verdict_sha256": "6972ecd130877044ee70e557f92da13b4e66f26508932fe410292042145463e2",
   "calendar": {
     "mode": "harmonized",
     "year_start": 2000,
@@ -11297,6 +11353,34 @@
         "severity_band": "missing"
       }
     ],
+    "previous_month_context": {
+      "aoi_id": "AOI-AMZ",
+      "year": 2026,
+      "month": 8,
+      "month_name": "Aug",
+      "is_observed": true,
+      "is_complete": true,
+      "coverage_status": "complete",
+      "value": 29.857036,
+      "hhe_total": 29.857036,
+      "raw_total": 147,
+      "raw_modis": 34,
+      "raw_viirs": 113,
+      "frp_total_mw": 4554.862251,
+      "frp_measured_events": 66,
+      "frp_missing_events": 0,
+      "night_share": 0.682194,
+      "hist_median_hhe": 18.720857,
+      "hist_mean_hhe": 20.05564,
+      "hist_iqr_hhe": 4.697032,
+      "hist_p90_hhe": 29.14,
+      "hist_p95_hhe": 30.445785,
+      "anomaly_abs": 11.136179,
+      "anomaly_pct": 59.485413,
+      "z_robust": 3.198296,
+      "empirical_percentile": 90.0,
+      "severity_band": "elevated"
+    },
     "climatology": [
       {
         "month": 1,
@@ -12197,7 +12281,7 @@
   "verification_scope": "Unsigned reproducibility and internal evidence consistency; not source authentication.",
   "reference_time": "2026-11-14T00:00:00Z",
   "calculation_version": "firetrace-demo-v2",
-  "calculation_sha256": "d6ee76db93396a64f754e889e15e77f9c863a27d72276fb2e2c353954b9b41c5",
+  "calculation_sha256": "35674f9fd4b25a57d2932d33078853f28c339a6d9e8b4be5fc9965eb94ce8ffb",
   "provenance": {
     "source_kind": "generated_demo",
     "source_records_sha256": "0401772b8768debcdb75986fd9413f3fcd5df3f44fb4cd20b4ed917de0163ea6",
@@ -12936,5 +13020,5 @@
     ],
     "note": "Approximate modeled opportunities from nominal solar times, schematic ground-track phase and spherical viewing geometry. No ephemerides, cloud screening, actual instrument scheduling or operational accuracy are supplied. Day/night labels are nominal branches, not computed local illumination. Historical 50-minute NOAA-21/20 spacing is schematic; known source end dates are applied."
   },
-  "receipt_sha256": "a5ce4285ea0fb7084303d4de57e7962c2e9cdfb86a61a23bf1b94549f872238f"
+  "receipt_sha256": "b5beab1fb27b00dd232911391e7c9a8fc273c056cc0c4fbb07d62e2c22785ba6"
 }

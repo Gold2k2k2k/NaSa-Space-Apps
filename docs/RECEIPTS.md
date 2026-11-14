@@ -41,8 +41,12 @@ Version 1 receipts remain readable with a narrower verification scope. They did
 not contain full calendar cells or independent input summaries, so those missing
 relationships cannot be reconstructed from a v1 receipt alone. Verification
 reports that limitation. Rules `.1` are frozen in `app/legacy_rules.py` for those
-earlier records; new analyses use `.2`. Unknown rules or a mismatched versioned
-rule source hash are rejected. Preserve the matching code with retained evidence.
+earlier records; new analyses use `.3`. Unknown rules or a mismatched versioned
+rule source hash are rejected. Current rules are `2026-11-15.3`, with separate
+preceding-month context bound in calendar, summary and Q7 even outside the selected
+window. Earlier interim v2 `.2` receipts require their matching bundled verifier
+and sources; this verifier accepts current `.3` and frozen legacy `.1` rules.
+Preserve matching code with retained evidence.
 
 These are **unsigned consistency and reproducibility records**. Hashes do not
 authenticate a NASA source, establish that input observations are true, or stop

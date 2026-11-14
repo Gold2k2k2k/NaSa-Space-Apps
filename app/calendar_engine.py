@@ -62,48 +62,49 @@ def build_burning_calendar(harmonized_data: dict[str, Any], aoi: dict[str, Any],
                               "baseline_complete_year_count": sum((y, month) in complete for y in years),
                               **{key: _rounded(value) for key, value in row.items()}})
 
-    cells = []
-    by_month = {}
-    for year in range(year_start, year_end + 1):
-        for month in range(1, 13):
-            key = year, month
-            items = grouped[key]
-            has_data = key in observed
-            value = metric(items) if has_data else None
-            hhe = total(items, "hhe") if has_data else None
-            powers = [e["hfre_mw"] for e in items if e.get("hfre_mw") is not None]
-            known_dn = [e for e in items if e["daynight"] in ("D", "N")]
-            dn_total = metric(known_dn)
-            night_share = metric([e for e in known_dn if e["daynight"] == "N"]) / dn_total if dn_total > 0 else None
-            clim = distributions[month - 1]
-            median, iqr = clim["median"], clim["iqr"]
-            comparable = has_data and median is not None
-            # Explicit heuristic floor, not an estimated probability distribution.
-            scale = max(.7413 * iqr, .5, .18 * median) if median is not None else None
-            anomaly = value - median if comparable else None
-            z = anomaly / scale if comparable else None
-            pct = anomaly / median * 100 if comparable and median != 0 else None
-            band = ("missing" if not has_data else "unverifiable" if z is None else
-                    "critical" if z >= 2 and value > clim["p95"] else
-                    "elevated" if z >= 1 else "low" if z < -1 else "nominal")
-            cell = {"aoi_id": aoi["aoi_id"], "year": year, "month": month,
-                    "month_name": MONTH_NAMES[month - 1], "is_observed": has_data,
-                    "is_complete": key in complete,
-                    "coverage_status": "complete" if key in complete else "records_only" if has_data else "missing",
-                    "value": _rounded(value), "hhe_total": _rounded(hhe),
-                    "raw_total": int(total(items, "raw_detections")) if has_data else None,
-                    "raw_modis": int(total(items, "raw_modis")) if has_data else None,
-                    "raw_viirs": int(total(items, "raw_viirs")) if has_data else None,
-                    "frp_total_mw": _rounded(math.fsum(powers)) if powers else None,
-                    "frp_measured_events": len(powers), "frp_missing_events": len(items) - len(powers),
-                    "night_share": _rounded(night_share),
-                    "hist_median_hhe": median, "hist_mean_hhe": clim["mean"],
-                    "hist_iqr_hhe": iqr, "hist_p90_hhe": clim["p90"], "hist_p95_hhe": clim["p95"],
-                    "anomaly_abs": _rounded(anomaly), "anomaly_pct": _rounded(pct),
-                    "z_robust": _rounded(z), "empirical_percentile": empirical_percentile(history_by_month[month], value) if has_data else None,
-                    "severity_band": band}
-            cells.append(cell)
-            by_month[key] = cell
+    def make_cell(year, month):
+        key = year, month
+        items = grouped[key]
+        has_data = key in observed
+        value = metric(items) if has_data else None
+        hhe = total(items, "hhe") if has_data else None
+        powers = [e["hfre_mw"] for e in items if e.get("hfre_mw") is not None]
+        known_dn = [e for e in items if e["daynight"] in ("D", "N")]
+        dn_total = metric(known_dn)
+        night_share = metric([e for e in known_dn if e["daynight"] == "N"]) / dn_total if dn_total > 0 else None
+        clim = distributions[month - 1]
+        median, iqr = clim["median"], clim["iqr"]
+        comparable = has_data and median is not None
+        # Explicit heuristic floor, not an estimated probability distribution.
+        scale = max(.7413 * iqr, .5, .18 * median) if median is not None else None
+        anomaly = value - median if comparable else None
+        z = anomaly / scale if comparable else None
+        pct = anomaly / median * 100 if comparable and median != 0 else None
+        band = ("missing" if not has_data else "unverifiable" if z is None else
+                "critical" if z >= 2 and value > clim["p95"] else
+                "elevated" if z >= 1 else "low" if z < -1 else "nominal")
+        cell = {"aoi_id": aoi["aoi_id"], "year": year, "month": month,
+                "month_name": MONTH_NAMES[month - 1], "is_observed": has_data,
+                "is_complete": key in complete,
+                "coverage_status": "complete" if key in complete else "records_only" if has_data else "missing",
+                "value": _rounded(value), "hhe_total": _rounded(hhe),
+                "raw_total": int(total(items, "raw_detections")) if has_data else None,
+                "raw_modis": int(total(items, "raw_modis")) if has_data else None,
+                "raw_viirs": int(total(items, "raw_viirs")) if has_data else None,
+                "frp_total_mw": _rounded(math.fsum(powers)) if powers else None,
+                "frp_measured_events": len(powers), "frp_missing_events": len(items) - len(powers),
+                "night_share": _rounded(night_share),
+                "hist_median_hhe": median, "hist_mean_hhe": clim["mean"],
+                "hist_iqr_hhe": iqr, "hist_p90_hhe": clim["p90"], "hist_p95_hhe": clim["p95"],
+                "anomaly_abs": _rounded(anomaly), "anomaly_pct": _rounded(pct),
+                "z_robust": _rounded(z), "empirical_percentile": empirical_percentile(history_by_month[month], value) if has_data else None,
+                "severity_band": band}
+        return cell
+
+    cells = [make_cell(year, month) for year in range(year_start, year_end + 1) for month in range(1, 13)]
+    by_month = {(cell["year"], cell["month"]): cell for cell in cells}
+    previous_key = (focus_year - 1, 12) if focus_month == 1 else (focus_year, focus_month - 1)
+    previous_context = (by_month.get(previous_key) or make_cell(*previous_key)) if previous_key[0] >= 2000 else None
 
     annual = []
     hhe_points, raw_points = [], []
@@ -159,7 +160,8 @@ def build_burning_calendar(harmonized_data: dict[str, Any], aoi: dict[str, Any],
             "focus_year": focus_year, "focus_month": focus_month,
             "max_cell_value": max((c["value"] for c in observed_cells), default=0),
             "max_hhe_value": max((c["hhe_total"] for c in observed_cells), default=0),
-            "cells": cells, "climatology": distributions, "annual_series": annual,
+            "cells": cells, "previous_month_context": previous_context,
+            "climatology": distributions, "annual_series": annual,
             "dekadal_profile": profile, "phenology": phenology, "focus_comparison": focus,
             "coverage_note": "Recorded detections do not establish complete observation coverage or absence of fire.",
             "robust_scale_definition": "max(0.7413 * IQR, 0.5, 0.18 * median); demo heuristic",

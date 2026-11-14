@@ -13,7 +13,7 @@ from typing import Any
 
 from app.canonical import sha256_of
 
-RULES_VERSION = "2026-11-14.2"
+RULES_VERSION = "2026-11-15.3"
 VERDICTS = ("CRITICAL_ANOMALY", "ELEVATED_WATCH", "NOMINAL_REGIME", "UNVERIFIABLE")
 CRITICAL_ANOMALY, ELEVATED_WATCH, NOMINAL_REGIME, UNVERIFIABLE = VERDICTS
 
@@ -157,10 +157,10 @@ def decide(evidence: dict[str, Any]) -> dict[str, Any]:
         # Early season onset check: preceding month elevated while focus month is pre-peak
         prev_mo = 12 if focus["month"] == 1 else focus["month"] - 1
         prev_year = focus["year"] - 1 if focus["month"] == 1 else focus["year"]
-        prev_cell = next(
-            (c for c in calendar["cells"] if c["year"] == prev_year and c["month"] == prev_mo and c["is_observed"]),
-            None,
-        )
+        prev_cell = calendar.get("previous_month_context") if "previous_month_context" in calendar else next(
+            (c for c in calendar["cells"] if c["year"] == prev_year and c["month"] == prev_mo), None)
+        if prev_cell and not prev_cell["is_observed"]:
+            prev_cell = None
         if prev_cell and prev_cell["z_robust"] is not None and prev_cell["z_robust"] >= 1.25 and z_rob >= 0.6 and focus.get("is_pre_peak", False):
             findings.append(Finding(
                 3, ELEVATED_WATCH, "early_season_onset",

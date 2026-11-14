@@ -1,6 +1,6 @@
 """Benchmark Multi-Decadal MODIS & VIIRS Datasets, Custom AOI Parsers, and FIRMS CSV Ingestion.
 
-Provides six real-world benchmark fire regimes (2000-2026) plus deterministic,
+Provides six generated benchmark fire regimes (2000-2026) plus deterministic,
 biome-aware raw FIRMS MODIS C6.1 and VIIRS S-NPP / NOAA-20 / NOAA-21 record
 generation for any user-drawn polygon or lat/lon AOI on Earth, and direct CSV
 parsing for downloaded NASA FIRMS archives.
@@ -17,7 +17,7 @@ from typing import Any, Optional
 
 from copy import deepcopy
 
-from app.canonical import canonical_json, stable_id
+from app.canonical import canonical_json, sha256_of, stable_id
 from app.geometry import (
     bbox_from_ring, bounding_geometry, finite_number, geometry_area_km2,
     geometry_bbox, geometry_centroid, geometry_contains, geometry_polygons,
@@ -562,7 +562,7 @@ def parse_uploaded_csv(csv_text: str, name: Optional[str] = None) -> tuple[list[
     normalized_rows: list[dict[str, Any]] = []
     rejected = 0
     total_rows = 0
-    rejection_examples = []
+    rejection_groups = {}
     latest = None
     try:
         for row in reader:
@@ -577,8 +577,10 @@ def parse_uploaded_csv(csv_text: str, name: Optional[str] = None) -> tuple[list[
                     raise ValueError("Observation year must be in the supported 2000-2026 window")
             except ValueError as error:
                 rejected += 1
-                if len(rejection_examples) < 20:
-                    rejection_examples.append({"line": reader.line_num, "reason": str(error)})
+                fingerprint = sha256_of({str(key): value for key, value in row.items()})
+                example = rejection_groups.setdefault(fingerprint, {
+                    "row_sha256": fingerprint, "reason": str(error)[:512], "occurrences": 0})
+                example["occurrences"] += 1
                 continue
             rows.append(dict(row))
             normalized_rows.append(normalized)
@@ -591,6 +593,10 @@ def parse_uploaded_csv(csv_text: str, name: Optional[str] = None) -> tuple[list[
 
     if not rows:
         raise ValueError("No valid FIRMS hotspot rows found in uploaded CSV")
+    # Diagnostics and retained inputs use content order, so line reordering does
+    # not change a snapshot ID, cause cache conflicts, or alter its audit ZIP.
+    rejection_examples = [rejection_groups[key] for key in sorted(rejection_groups)[:20]]
+    rows.sort(key=canonical_json)
 
     geometry = bounding_geometry([[lon, lat] for lon, lat in zip(lons, lats)])
     ring = geometry_polygons(geometry)[0][0]
@@ -617,7 +623,7 @@ def parse_uploaded_csv(csv_text: str, name: Optional[str] = None) -> tuple[list[
         "is_uploaded_csv": True,
         "ingestion": {"total_rows": total_rows, "accepted_rows": len(rows),
                       "rejected_rows": rejected, "rejection_examples": rejection_examples,
-                      "rejection_examples_truncated": rejected > len(rejection_examples)},
+                      "rejection_examples_truncated": len(rejection_groups) > len(rejection_examples)},
         "observed_periods": sorted({(r["year"], r["month"]) for r in normalized_rows}),
     }
     return rows, aoi

@@ -143,6 +143,15 @@ def _rings_cross(first, second) -> bool:
         for r, s in zip(b, b[1:]):
             if _cross(p, q, r) * _cross(p, q, s) < -EPSILON ** 2 and _cross(r, s, p) * _cross(r, s, q) < -EPSILON ** 2:
                 return True
+            # Canonical outer/hole rings both keep filled polygon interior to
+            # the left. Collinear edges pointing the same way therefore share
+            # interior, whereas oppositely directed adjacent boundaries do not.
+            if abs(_cross(p, q, r)) <= EPSILON and abs(_cross(p, q, s)) <= EPSILON:
+                direction = (q[0]-p[0])*(s[0]-r[0]) + (q[1]-p[1])*(s[1]-r[1])
+                axis = 0 if abs(q[0]-p[0]) >= abs(q[1]-p[1]) else 1
+                overlap = min(max(p[axis], q[axis]), max(r[axis], s[axis])) - max(min(p[axis], q[axis]), min(r[axis], s[axis]))
+                if direction > 0 and overlap > EPSILON:
+                    return True
     return False
 
 

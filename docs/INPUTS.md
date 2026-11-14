@@ -36,7 +36,10 @@ rejected with instructions to split them. Headers are trimmed and normalized,
 including a UTF-8 BOM; duplicate or empty headers and malformed quoting are
 rejected. Each row is normalized and checked before acceptance. Invalid rows do
 not affect AOI bounds or the default focus date. A mixed-validity upload returns
-accepted/rejected counts and a bounded set of rejection examples; an entirely
+accepted/rejected counts and up to 20 content-sorted rejection examples with
+canonical row hashes, reasons and occurrence counts. Rejected examples use
+content identifiers instead of line numbers so row order does not alter a run.
+Accepted rows are retained in canonical content order; an entirely
 invalid upload is rejected.
 
 Uploaded geometry bounds follow the smallest longitude interval containing its
