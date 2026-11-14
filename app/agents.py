@@ -15,6 +15,7 @@ from app.canonical import sha256_of
 from app.datasets import generate_firms_records, parse_custom_aoi
 from app.evidence import QUERY_TITLES, expected_query_rows, summarize_inputs
 from app.harmonize import harmonize_records
+from app.models import validate_options
 from app.rules import decide
 
 PERSONAS = {
@@ -327,25 +328,11 @@ def run_investigation(
 ) -> dict[str, Any]:
     """Execute the full 5-agent investigation and return the complete structured output."""
     aoi = parse_custom_aoi(request)
-    year_start = int(request.get("year_start", 2000))
-    year_end = int(request.get("year_end", 2026))
-    focus_year = int(request.get("focus_year", aoi.get("default_focus_year", 2026)))
-    focus_month = int(request.get("focus_month", aoi.get("default_focus_month", 8)))
-    mode = "raw" if request.get("mode") == "raw" else "harmonized"
-    flare_guard = bool(request.get("flare_guard", True))
-    confidence_min = str(request.get("confidence_min", "low")).lower()
-    persona = str(request.get("persona", "responder")).lower()
-
-    options = {
-        "year_start": year_start,
-        "year_end": year_end,
-        "focus_year": focus_year,
-        "focus_month": focus_month,
-        "mode": mode,
-        "flare_guard": flare_guard,
-        "confidence_min": confidence_min,
-        "persona": persona,
-    }
+    options = validate_options(request, aoi)
+    year_start, year_end = options["year_start"], options["year_end"]
+    focus_year, focus_month = options["focus_year"], options["focus_month"]
+    mode, flare_guard = options["mode"], options["flare_guard"]
+    confidence_min, persona = options["confidence_min"], options["persona"]
 
     if not run_id:
         seed_id = sha256_of({"aoi": aoi["aoi_id"], "options": options})[:10]
@@ -454,6 +441,10 @@ def run_investigation(
             "description": aoi.get("description", ""),
             "polygon": aoi["polygon"],
             "bbox": aoi["bbox"],
+            "geometry": aoi["geometry"],
+            "geojson": aoi["geometry"],
+            "selection_model": aoi.get("selection_model", "preset_box"),
+            "selection_notes": aoi.get("selection_notes", []),
         },
         "options": options,
         "verdict": decision["verdict"],

@@ -86,15 +86,15 @@ remain the public seams. Receipt revisions are explicitly versioned.
 metadata; `parse_uploaded_csv(csv_text: str, name: str | None = None) -> tuple`
 keeps its existing return shape while returning ingestion/coverage metadata.
 
-- [ ] Add failing tests for month 0/13, nonfinite coordinates, reversed/outside year
+- [x] Add failing tests for month 0/13, nonfinite coordinates, reversed/outside year
   windows, boolean/string enum mistakes, invalid calendar dates, valid numeric
   zeroes, sensor aliases, empty/oversized CSVs, and stable content identity.
-- [ ] Add failing geometry tests for Point/Polygon/MultiPolygon/FeatureCollection,
+- [x] Add failing geometry tests for Point/Polygon/MultiPolygon/FeatureCollection,
   holes, self-intersection, empty/degenerate rings, excessive vertices, poles,
   antimeridian, and lossless round-tripping.
-- [ ] Implement shared strict validation and canonical geometry operations; bound
+- [x] Implement shared strict validation and canonical geometry operations; bound
   input work and report rejected-row reasons without silent truncation.
-- [ ] Run `python -m unittest discover -s tests -p test_inputs_geometry.py -v`.
+- [x] Run `python -m unittest discover -s tests -p test_inputs_geometry.py -v`.
   Assert equivalent canonical inputs share identity, changed geometry/data does
   not, and invalid inputs produce controlled validation errors.
 

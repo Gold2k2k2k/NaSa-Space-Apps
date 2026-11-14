@@ -249,38 +249,45 @@ def clean_float(val: Any, default: Optional[float] = None) -> Optional[float]:
     if val is None or isinstance(val, bool):
         return default
     if isinstance(val, (int, float)):
-        return float(val) if math.isfinite(float(val)) else default
+        try:
+            parsed = float(val)
+        except OverflowError:
+            return default
+        return parsed if math.isfinite(parsed) else default
     text = clean_str(val)
     if text is None:
         return default
     try:
         parsed = float(text)
         return parsed if math.isfinite(parsed) else default
-    except ValueError:
+    except (ValueError, OverflowError):
         return default
 
 
 def normalize_satellite(raw_sat: Any, instrument: str) -> tuple[str, bool]:
     """Return (canonical_satellite_name, is_afternoon_train)."""
     text = (clean_str(raw_sat) or "").upper()
-    if text in {"T", "TERRA", "MODIS_TERRA", "AM"}:
-        return "Terra", False
-    if text in {"A", "AQUA", "MODIS_AQUA"}:
-        return "Aqua", True
-    if text in {"N", "NPP", "SNPP", "S-NPP", "SUOMI NPP", "SUOMI_NPP"}:
-        return "S-NPP", True
-    if text in {"1", "N20", "NOAA20", "NOAA-20", "JPSS-1", "JPSS1"}:
-        return "NOAA-20", True
-    if text in {"2", "N21", "NOAA21", "NOAA-21", "JPSS-2", "JPSS2"}:
-        return "NOAA-21", True
-    if instrument == "MODIS":
-        return "Aqua", True
-    return "S-NPP", True
+    aliases = {
+        "Terra": {"T", "TERRA", "MODIS_TERRA", "AM"},
+        "Aqua": {"A", "AQUA", "MODIS_AQUA"},
+        "S-NPP": {"N", "NPP", "SNPP", "S-NPP", "SUOMI NPP", "SUOMI_NPP"},
+        "NOAA-20": {"1", "J1", "N20", "NOAA20", "NOAA-20", "JPSS-1", "JPSS1"},
+        "NOAA-21": {"2", "J2", "N21", "NOAA21", "NOAA-21", "JPSS-2", "JPSS2"},
+    }
+    if not text:
+        return "UNKNOWN", False
+    name = next((name for name, names in aliases.items() if text in names), None)
+    if name is None:
+        raise ValueError(f"Unknown satellite identifier: {raw_sat!r}")
+    family = "MODIS" if name in {"Terra", "Aqua"} else "VIIRS"
+    if instrument and instrument != family:
+        raise ValueError(f"Satellite {name} does not carry the stated {instrument} instrument")
+    return name, name != "Terra"
 
 
 def normalize_confidence(instrument: str, raw_conf: Any) -> tuple[str, float]:
     """Resolve numeric MODIS (0..100) and categorical VIIRS (l/n/h) confidence."""
-    if raw_conf is None:
+    if clean_str(raw_conf) is None:
         return "nominal", CONFIDENCE_WEIGHTS["nominal"]
     text = str(raw_conf).strip().lower()
     if text in {"l", "low"}:
@@ -291,7 +298,9 @@ def normalize_confidence(instrument: str, raw_conf: Any) -> tuple[str, float]:
         return "high", CONFIDENCE_WEIGHTS["high"]
     num = clean_float(raw_conf)
     if num is not None:
-        clamped = max(0.0, min(100.0, num))
+        if not 0 <= num <= 100:
+            raise ValueError("Numeric confidence must be between 0 and 100")
+        clamped = num
         if clamped < 30.0:
             cls = "low"
         elif clamped < 80.0:
@@ -300,7 +309,18 @@ def normalize_confidence(instrument: str, raw_conf: Any) -> tuple[str, float]:
             cls = "high"
         weight = round(max(0.25, min(1.0, clamped / 100.0)), 4) if instrument == "MODIS" else CONFIDENCE_WEIGHTS[cls]
         return cls, weight
-    return "nominal", CONFIDENCE_WEIGHTS["nominal"]
+    raise ValueError(f"Invalid confidence value: {raw_conf!r}")
+
+
+def _measurement(raw: dict[str, Any], key: str, default: float, *, positive: bool = False) -> float:
+    value = clean_float(raw.get(key))
+    if value is None:
+        if clean_str(raw.get(key)) is not None:
+            raise ValueError(f"{key} must be a finite number")
+        return default
+    if value < 0 or (positive and value == 0):
+        raise ValueError(f"{key} must be {'positive' if positive else 'non-negative'}")
+    return value
 
 
 def cell_id_for(lat: float, lon: float) -> str:
@@ -331,9 +351,17 @@ def normalize_hotspot_row(raw: dict[str, Any]) -> dict[str, Any]:
 
     inst_raw = (clean_str(raw.get("instrument")) or "").upper()
     if not inst_raw:
-        inst_raw = "VIIRS" if ("bright_ti4" in raw or "bright_ti5" in raw) else "MODIS"
+        hint, _ = normalize_satellite(raw.get("satellite"), "")
+        if hint in {"Terra", "Aqua"}:
+            inst_raw = "MODIS"
+        elif hint != "UNKNOWN" or clean_float(raw.get("bright_ti4")) is not None or clean_float(raw.get("bright_ti5")) is not None:
+            inst_raw = "VIIRS"
+        elif clean_float(raw.get("brightness")) is not None:
+            inst_raw = "MODIS"
+        else:
+            raise ValueError("Cannot infer MODIS/VIIRS instrument from this row")
     if inst_raw not in {"MODIS", "VIIRS"}:
-        inst_raw = "VIIRS" if "VIIRS" in inst_raw else "MODIS"
+        raise ValueError(f"Unsupported instrument: {inst_raw!r}")
 
     sat_name, is_afternoon = normalize_satellite(raw.get("satellite"), inst_raw)
 
@@ -347,16 +375,25 @@ def normalize_hotspot_row(raw: dict[str, Any]) -> dict[str, Any]:
 
     conf_cls, conf_weight = normalize_confidence(inst_raw, raw.get("confidence"))
     default_scan, default_track = (0.375, 0.375) if inst_raw == "VIIRS" else (1.0, 1.0)
-    scan = max(0.1, clean_float(raw.get("scan"), default_scan) or default_scan)
-    track = max(0.1, clean_float(raw.get("track"), default_track) or default_track)
-    frp = max(0.0, clean_float(raw.get("frp"), 12.0) or 0.0)
+    scan = _measurement(raw, "scan", default_scan, positive=True)
+    track = _measurement(raw, "track", default_track, positive=True)
+    frp = _measurement(raw, "frp", 12.0)
 
     daynight = (clean_str(raw.get("daynight")) or "D").upper()
+    daynight = {"DAY": "D", "NIGHT": "N"}.get(daynight, daynight)
     if daynight not in {"D", "N"}:
-        daynight = "N" if daynight.startswith("N") else "D"
+        raise ValueError("daynight must be D or N")
 
-    acq_time = (clean_str(raw.get("acq_time")) or "1330").zfill(4)[:4]
-    fire_type = int(clean_float(raw.get("type"), 0.0) or 0)
+    acq_time = (clean_str(raw.get("acq_time")) or "1330")
+    if not re.fullmatch(r"\d{1,4}", acq_time):
+        raise ValueError(f"Invalid acq_time (expected HHMM): {raw.get('acq_time')!r}")
+    acq_time = acq_time.zfill(4)
+    if int(acq_time[:2]) > 23 or int(acq_time[2:]) > 59:
+        raise ValueError(f"Invalid acq_time (expected HHMM): {raw.get('acq_time')!r}")
+    fire_type_value = _measurement(raw, "type", 0.0)
+    if fire_type_value not in {0.0, 1.0, 2.0, 3.0}:
+        raise ValueError("FIRMS type must be an integer from 0 to 3")
+    fire_type = int(fire_type_value)
 
     return {
         "lat": round(lat, 5),

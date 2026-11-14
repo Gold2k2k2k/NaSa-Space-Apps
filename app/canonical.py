@@ -43,3 +43,9 @@ def canonical_json(value: Any) -> str:
 def sha256_of(value: Any) -> str:
     return hashlib.sha256(canonical_json(value).encode("utf-8")).hexdigest()
 
+
+def stable_id(prefix: str, payload: Any, length: int = 16) -> str:
+    if type(length) is not int or not 1 <= length <= 64:
+        raise ValueError("Identifier digest length must be between 1 and 64")
+    return f"{prefix}-{sha256_of(payload)[:length]}"
+

@@ -15,7 +15,15 @@ import random
 from datetime import date, timedelta
 from typing import Any, Optional
 
-from app.schema_mapping import clean_float, clean_str
+from copy import deepcopy
+
+from app.canonical import canonical_json, stable_id
+from app.geometry import (
+    bbox_from_ring, bounding_geometry, finite_number, geometry_area_km2,
+    geometry_bbox, geometry_centroid, geometry_contains, geometry_polygons,
+    interior_point, normalize_geometry, point_geometry, wrap_longitude,
+)
+from app.schema_mapping import clean_float, clean_str, normalize_hotspot_row
 
 
 def _square_ring(lat: float, lon: float, half_km: float) -> list[list[float]]:
@@ -29,51 +37,6 @@ def _square_ring(lat: float, lon: float, half_km: float) -> list[list[float]]:
         [round(lon - dlon, 5), round(lat + dlat, 5)],
         [round(lon - dlon, 5), round(lat - dlat, 5)],
     ]
-
-
-def bbox_from_ring(ring: list[list[float]]) -> dict[str, float]:
-    lons = [p[0] for p in ring]
-    lats = [p[1] for p in ring]
-    return {
-        "lon_min": round(min(lons), 5),
-        "lon_max": round(max(lons), 5),
-        "lat_min": round(min(lats), 5),
-        "lat_max": round(max(lats), 5),
-    }
-
-
-def centroid_of_ring(ring: list[list[float]]) -> tuple[float, float]:
-    pts = ring[:-1] if len(ring) > 1 and ring[0] == ring[-1] else ring
-    if not pts:
-        return 0.0, 0.0
-    return round(sum(p[1] for p in pts) / len(pts), 5), round(sum(p[0] for p in pts) / len(pts), 5)
-
-
-def polygon_area_km2(ring: list[list[float]]) -> float:
-    if len(ring) < 3:
-        return 0.0
-    lat0, _ = centroid_of_ring(ring)
-    kx = 111.32 * max(0.1, math.cos(math.radians(lat0)))
-    ky = 111.32
-    area = 0.0
-    for i in range(len(ring) - 1):
-        x1, y1 = ring[i][0] * kx, ring[i][1] * ky
-        x2, y2 = ring[i + 1][0] * kx, ring[i + 1][1] * ky
-        area += x1 * y2 - x2 * y1
-    return round(abs(area) * 0.5, 2)
-
-
-def point_in_polygon(lon: float, lat: float, ring: list[list[float]]) -> bool:
-    inside = False
-    n = len(ring)
-    j = n - 1
-    for i in range(n):
-        xi, yi = ring[i][0], ring[i][1]
-        xj, yj = ring[j][0], ring[j][1]
-        if ((yi > lat) != (yj > lat)) and (lon < (xj - xi) * (lat - yi) / ((yj - yi) or 1e-12) + xi):
-            inside = not inside
-        j = i
-    return inside
 
 
 AOIS: dict[str, dict[str, Any]] = {
@@ -267,6 +230,9 @@ for _aoi in AOIS.values():
     ring = _square_ring(_aoi["lat"], _aoi["lon"], _aoi["radius_km"])
     _aoi["polygon"] = ring
     _aoi["bbox"] = bbox_from_ring(ring)
+    _aoi["geometry"] = normalize_geometry({"type": "Polygon", "coordinates": [ring]})
+    _aoi["geojson"] = _aoi["geometry"]
+    _aoi["area_km2"] = round(geometry_area_km2(_aoi["geometry"]), 6)
 
 
 def list_aois() -> list[dict[str, Any]]:
@@ -303,65 +269,43 @@ def _default_weights_for_lat(lat: float) -> list[float]:
 
 
 def parse_custom_aoi(spec: dict[str, Any]) -> dict[str, Any]:
-    """Resolve preset AOI, custom lat/lon/radius, or GeoJSON Polygon/Feature into an AOI dict."""
+    """Resolve a preset or validated complete geometry without discarding parts."""
+    if not isinstance(spec, dict):
+        raise ValueError("Analysis request must be an object")
     aoi_id = clean_str(spec.get("aoi_id"))
-    if aoi_id and aoi_id in AOIS and not spec.get("geojson") and spec.get("custom_lat") is None:
-        return dict(AOIS[aoi_id])
-
     geojson = spec.get("geojson")
-    ring: Optional[list[list[float]]] = None
+    if geojson is None:
+        geojson = spec.get("geometry")
+    if geojson is None and spec.get("polygon") is not None:
+        geojson = {"type": "Polygon", "coordinates": [spec["polygon"]]}
     name = clean_str(spec.get("name"))
-
-    if geojson:
-        if not isinstance(geojson, dict):
-            raise ValueError("GeoJSON payload must be a JSON object")
-        gtype = geojson.get("type")
-        geom = geojson
-        if gtype == "FeatureCollection":
-            feats = geojson.get("features") or []
-            if not feats:
-                raise ValueError("GeoJSON FeatureCollection contains no features")
-            geom = feats[0].get("geometry") or {}
-            props = feats[0].get("properties") or {}
-            name = name or clean_str(props.get("name"))
-        elif gtype == "Feature":
-            geom = geojson.get("geometry") or {}
-            props = geojson.get("properties") or {}
-            name = name or clean_str(props.get("name"))
-        if geom.get("type") == "Polygon":
-            coords = geom.get("coordinates") or []
-            if not coords or len(coords[0]) < 4:
-                raise ValueError("GeoJSON Polygon exterior ring must have at least 4 positions")
-            ring = [[float(p[0]), float(p[1])] for p in coords[0]]
-            if ring[0] != ring[-1]:
-                ring.append(list(ring[0]))
-        elif geom.get("type") == "Point":
-            coords = geom.get("coordinates") or []
-            if len(coords) < 2:
-                raise ValueError("GeoJSON Point requires [lon, lat]")
-            lon, lat = float(coords[0]), float(coords[1])
-            radius_km = max(5.0, min(250.0, float(clean_float(spec.get("radius_km"), 50.0) or 50.0)))
-            ring = _square_ring(lat, lon, radius_km)
-        else:
-            raise ValueError(f"Unsupported GeoJSON geometry type: {geom.get('type')!r}")
-
-    if ring is not None:
-        for lon_v, lat_v in ring:
-            if not (-90.0 <= lat_v <= 90.0 and -180.0 <= lon_v <= 180.0):
-                raise ValueError(f"GeoJSON coordinate out of Earth bounds: [{lon_v}, {lat_v}]")
-        lat, lon = centroid_of_ring(ring)
-        area_km2 = max(1.0, polygon_area_km2(ring))
-        radius_km = round(math.sqrt(area_km2) * 0.5, 1)
+    coordinate_override = any(key in spec for key in ("custom_lat", "custom_lon"))
+    if aoi_id in AOIS:
+        preset = AOIS[aoi_id]
+        coordinate_override |= any(key in spec and spec[key] != preset[key] for key in ("lat", "lon", "radius_km"))
+        same_geometry = geojson is None or normalize_geometry(geojson) == preset["geometry"]
+        if not coordinate_override and same_geometry:
+            return deepcopy(preset)
+    selection_model = "explicit_geometry"
+    if geojson is not None:
+        geometry = normalize_geometry(geojson, radius_km=spec.get("radius_km", 60))
+        if isinstance(geojson, dict) and geojson.get("type") == "Feature":
+            props = geojson.get("properties")
+            if isinstance(props, dict):
+                name = name or clean_str(props.get("name"))
+        radius_km = round(math.sqrt(geometry_area_km2(geometry)) * 0.5, 1)
     else:
-        lat = clean_float(spec.get("lat", spec.get("custom_lat")))
-        lon = clean_float(spec.get("lon", spec.get("custom_lon")))
-        if lat is None or lon is None or not (-90.0 <= lat <= 90.0 and -180.0 <= lon <= 180.0):
-            raise ValueError("Valid latitude (-90..90) and longitude (-180..180) are required")
-        radius_km = max(5.0, min(250.0, float(clean_float(spec.get("radius_km"), 60.0) or 60.0)))
-        ring = _square_ring(lat, lon, radius_km)
-        area_km2 = round((radius_km * 2.0) ** 2, 1)
-
-    custom_id = f"CUSTOM-{abs(hash((round(lat, 3), round(lon, 3), round(area_km2, 1)))) % 10000:04d}"
+        if aoi_id and not any(key in spec for key in ("lat", "lon", "custom_lat", "custom_lon")):
+            raise ValueError(f"Unknown preset AOI: {aoi_id!r}")
+        lat = finite_number(spec.get("custom_lat", spec.get("lat")), "latitude")
+        lon = finite_number(spec.get("custom_lon", spec.get("lon")), "longitude")
+        radius_km = finite_number(spec.get("radius_km", 60), "radius_km")
+        geometry = normalize_geometry(point_geometry(lon, lat, radius_km))
+        selection_model = "approximate_rectangular_buffer"
+    lat, lon = geometry_centroid(geometry)
+    area_km2 = round(geometry_area_km2(geometry), 6)
+    ring = geometry_polygons(geometry)[0][0]
+    custom_id = stable_id("CUSTOM", {"geometry": geometry})
     return {
         "aoi_id": custom_id,
         "name": name or f"Custom AOI ({lat:.2f}, {lon:.2f})",
@@ -371,8 +315,8 @@ def parse_custom_aoi(spec: dict[str, Any]) -> dict[str, Any]:
         "lon": round(lon, 4),
         "radius_km": radius_km,
         "area_km2": area_km2,
-        "default_focus_year": int(clean_float(spec.get("focus_year"), 2026) or 2026),
-        "default_focus_month": int(clean_float(spec.get("focus_month"), 8 if lat >= 0 else 1) or 8),
+        "default_focus_year": spec.get("focus_year", 2026),
+        "default_focus_month": spec.get("focus_month", 8 if lat >= 0 else 1),
         "peak_season": "Latitude-derived climatology",
         "expected_verdict": "NOMINAL_REGIME",
         "description": f"User-defined area of interest centered at ({lat:.3f}, {lon:.3f}) covering {area_km2:,.1f} km².",
@@ -385,7 +329,11 @@ def parse_custom_aoi(spec: dict[str, Any]) -> dict[str, Any]:
         "trend_per_year": 0.004,
         "year_shocks": {},
         "polygon": ring,
-        "bbox": bbox_from_ring(ring),
+        "bbox": geometry_bbox(geometry),
+        "geometry": geometry,
+        "geojson": geometry,
+        "selection_model": selection_model,
+        "selection_notes": ["Point/radius selections are approximate rectangular footprints, split at the dateline and clipped at the poles."] if selection_model != "explicit_geometry" else [],
         "is_custom": True,
     }
 
@@ -402,7 +350,7 @@ def generate_firms_records(
 ) -> list[dict[str, Any]]:
     """Generate deterministic, realistic raw FIRMS MODIS & VIIRS rows for the AOI."""
     rng = random.Random(_seed_for(aoi))
-    ring = aoi["polygon"]
+    geometry = aoi["geometry"]
     bbox = aoi["bbox"]
     weights = aoi["monthly_weights"]
     base_scale = aoi["base_scale"]
@@ -419,7 +367,7 @@ def generate_firms_records(
         for _attempt in range(50):
             fl_lat = rng.uniform(bbox["lat_min"] + 0.05, bbox["lat_max"] - 0.05)
             fl_lon = rng.uniform(bbox["lon_min"] + 0.05, bbox["lon_max"] - 0.05)
-            if point_in_polygon(fl_lon, fl_lat, ring):
+            if geometry_contains(fl_lon, fl_lat, geometry):
                 flare_sites.append((round(fl_lat, 4), round(fl_lon, 4)))
                 break
 
@@ -429,11 +377,11 @@ def generate_firms_records(
         for _attempt in range(40):
             clat = rng.uniform(bbox["lat_min"], bbox["lat_max"])
             clon = rng.uniform(bbox["lon_min"], bbox["lon_max"])
-            if point_in_polygon(clon, clat, ring):
+            if geometry_contains(clon, clat, geometry):
                 burn_clusters.append((round(clat, 4), round(clon, 4)))
                 break
     if not burn_clusters:
-        burn_clusters.append((aoi["lat"], aoi["lon"]))
+        burn_clusters.append(interior_point(geometry))
 
     records: list[dict[str, Any]] = []
     span_lat = max(0.05, bbox["lat_max"] - bbox["lat_min"])
@@ -460,7 +408,7 @@ def generate_firms_records(
                 # Jitter within 0.015 deg (~1.6 km)
                 ev_lat = max(bbox["lat_min"], min(bbox["lat_max"], cx + rng.uniform(-span_lat * 0.04, span_lat * 0.04)))
                 ev_lon = max(bbox["lon_min"], min(bbox["lon_max"], cy + rng.uniform(-span_lon * 0.04, span_lon * 0.04)))
-                if not point_in_polygon(ev_lon, ev_lat, ring):
+                if not geometry_contains(ev_lon, ev_lat, geometry):
                     ev_lat, ev_lon = cx, cy
 
                 is_night = rng.random() < (night_prob * (1.25 if shock > 1.5 else 1.0))
@@ -593,57 +541,74 @@ def generate_firms_records(
                                 "type": 2,
                             })
 
-    return records
+    for row in records:
+        row["longitude"] = round(wrap_longitude(row["longitude"]), 5)
+    return [row for row in records if geometry_contains(row["longitude"], row["latitude"], geometry)]
+
+
+MAX_CSV_BYTES = 10 * 1024 * 1024
+MAX_CSV_ROWS = 25000
 
 
 def parse_uploaded_csv(csv_text: str, name: Optional[str] = None) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     """Parse an uploaded NASA FIRMS CSV (MODIS or VIIRS or combined) and derive its AOI bounds."""
-    if not csv_text or not csv_text.strip():
+    if not isinstance(csv_text, str) or not csv_text.strip():
         raise ValueError("Uploaded CSV content is empty")
-    reader = csv.DictReader(io.StringIO(csv_text.strip()))
-    if not reader.fieldnames:
+    if len(csv_text.encode("utf-8")) > MAX_CSV_BYTES:
+        raise ValueError("Uploaded CSV exceeds the 10 MiB limit")
+    try:
+        reader = csv.DictReader(io.StringIO(csv_text.lstrip("\ufeff").strip()), strict=True)
+        original_headers = reader.fieldnames
+    except csv.Error as error:
+        raise ValueError(f"Malformed CSV header: {error}") from error
+    if not original_headers:
         raise ValueError("CSV header row is missing")
+    headers = [field.strip().lower() for field in original_headers]
+    if any(not field for field in headers) or len(set(headers)) != len(headers):
+        raise ValueError("CSV headers must be non-empty and unique")
+    reader.fieldnames = headers
     rows: list[dict[str, Any]] = []
     lats: list[float] = []
     lons: list[float] = []
-    years: list[int] = []
-    months: list[int] = []
-    for idx, row in enumerate(reader):
-        if idx >= 25000:
-            break
-        lat = clean_float(row.get("latitude") or row.get("lat"))
-        lon = clean_float(row.get("longitude") or row.get("lon"))
-        acq = clean_str(row.get("acq_date"))
-        if lat is None or lon is None or not acq:
-            continue
-        rows.append(dict(row))
-        lats.append(lat)
-        lons.append(lon)
-        try:
-            d = date.fromisoformat(acq[:10])
-            years.append(d.year)
-            months.append(d.month)
-        except ValueError:
-            continue
+    normalized_rows: list[dict[str, Any]] = []
+    rejected = 0
+    total_rows = 0
+    rejection_examples = []
+    latest = None
+    try:
+        for row in reader:
+            total_rows += 1
+            if total_rows > MAX_CSV_ROWS:
+                raise ValueError("Uploaded CSV exceeds the 25,000-row limit; split the archive")
+            try:
+                if None in row or any(value is None for value in row.values()):
+                    raise ValueError("Row has a different number of fields from the header")
+                normalized = normalize_hotspot_row(row)
+                if not 2000 <= normalized["year"] <= 2026:
+                    raise ValueError("Observation year must be in the supported 2000-2026 window")
+            except ValueError as error:
+                rejected += 1
+                if len(rejection_examples) < 20:
+                    rejection_examples.append({"line": reader.line_num, "reason": str(error)})
+                continue
+            rows.append(dict(row))
+            normalized_rows.append(normalized)
+            lats.append(normalized["lat"])
+            lons.append(normalized["lon"])
+            observed_date = date.fromisoformat(normalized["acq_date"])
+            latest = max(latest, observed_date) if latest is not None else observed_date
+    except csv.Error as error:
+        raise ValueError(f"Malformed CSV: {error}") from error
 
     if not rows:
         raise ValueError("No valid FIRMS hotspot rows found in uploaded CSV")
 
-    lat_min, lat_max = min(lats), max(lats)
-    lon_min, lon_max = min(lons), max(lons)
-    pad_lat = max(0.15, (lat_max - lat_min) * 0.1)
-    pad_lon = max(0.15, (lon_max - lon_min) * 0.1)
-    ring = [
-        [round(lon_min - pad_lon, 5), round(lat_min - pad_lat, 5)],
-        [round(lon_max + pad_lon, 5), round(lat_min - pad_lat, 5)],
-        [round(lon_max + pad_lon, 5), round(lat_max + pad_lat, 5)],
-        [round(lon_min - pad_lon, 5), round(lat_max + pad_lat, 5)],
-        [round(lon_min - pad_lon, 5), round(lat_min - pad_lat, 5)],
-    ]
-    c_lat, c_lon = centroid_of_ring(ring)
-    area_km2 = max(10.0, polygon_area_km2(ring))
+    geometry = bounding_geometry([[lon, lat] for lon, lat in zip(lons, lats)])
+    ring = geometry_polygons(geometry)[0][0]
+    c_lat, c_lon = geometry_centroid(geometry)
+    area_km2 = round(geometry_area_km2(geometry), 6)
     aoi = {
-        "aoi_id": f"CSV-{abs(hash((len(rows), round(c_lat, 2), round(c_lon, 2)))) % 10000:04d}",
+        "aoi_id": stable_id("CSV", {"geometry": geometry, "rows": sorted(normalized_rows, key=canonical_json)}),
         "name": name or f"Uploaded FIRMS Archive ({len(rows)} rows)",
         "country": "Uploaded CSV",
         "biome": "User FIRMS Upload",
@@ -651,14 +616,20 @@ def parse_uploaded_csv(csv_text: str, name: Optional[str] = None) -> tuple[list[
         "lon": c_lon,
         "radius_km": round(math.sqrt(area_km2) * 0.5, 1),
         "area_km2": area_km2,
-        "default_focus_year": max(years) if years else 2026,
-        "default_focus_month": months[-1] if months else 8,
+        "default_focus_year": latest.year,
+        "default_focus_month": latest.month,
         "peak_season": "Derived from uploaded CSV",
         "expected_verdict": "NOMINAL_REGIME",
         "description": f"User-uploaded FIRMS dataset containing {len(rows)} raw hotspot detections.",
         "polygon": ring,
-        "bbox": bbox_from_ring(ring),
+        "bbox": geometry_bbox(geometry),
+        "geometry": geometry,
+        "geojson": geometry,
         "is_uploaded_csv": True,
+        "ingestion": {"total_rows": total_rows, "accepted_rows": len(rows),
+                      "rejected_rows": rejected, "rejection_examples": rejection_examples,
+                      "rejection_examples_truncated": rejected > len(rejection_examples)},
+        "observed_periods": sorted({(r["year"], r["month"]) for r in normalized_rows}),
     }
     return rows, aoi
 
