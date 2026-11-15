@@ -46,3 +46,10 @@ Other execution decisions are listed in [verification](verification.md): preserv
 the selected feature checkout, native Windows execution, fixed-reference precision
 and serialized-JSON replay. These rulings do not authorize public posting,
 repository-access changes or deployment.
+
+## Subsequent full-branch review
+
+The later `origin/main..6782d6e` review reported zero Standards findings and one
+P2 Spec finding concerning missing/contradictory calendar cells in rehashed
+receipts. The [calendar consistency follow-up](receipt-calendar-fix.md) records
+its targeted repair and verification separately from the three earlier findings.

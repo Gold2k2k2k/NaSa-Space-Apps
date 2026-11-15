@@ -17,6 +17,12 @@ Verification checks the receipt checksum, required query identities and counts,
 row hashes, query/evidence relationships, calendar digest and summary, and the
 re-derived rules version, verdict, deciding rule, findings, and verdict seal.
 JSON round-tripping preserves the canonical representation.
+For v2 calendars, verification also requires exactly one cell for every year/month
+in the declared window, matching analysis options and AOI. Focus measurements and
+reference fields must match the selected cell. Annual totals, observed/complete
+support, extrema, peak records and complete-year trends are checked against the
+cells rather than trusted because their checksum is valid. Contradictory or
+missing calendar evidence is rejected even after unsigned hashes are recomputed.
 New v2 records also bind source/ingestion metadata, calculation identity,
 reference time, modeled passes, lineage and any explicitly hypothetical metric.
 New case records also bind the pinned source manifest/subset identities, fixed

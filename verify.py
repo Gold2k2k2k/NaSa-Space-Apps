@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import hashlib
+import math
 import sys
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -25,6 +26,7 @@ from app import legacy_rules
 from app.calibration import resolve_calibration_policy
 from app.case_studies import MANIFEST_SHA256
 from app.manager_brief import build_manager_brief
+from app.stats import ols_slope_per_decade, theil_sen_per_decade
 
 MAX_RECEIPT_BYTES = 20 * 1024 * 1024
 
@@ -104,6 +106,105 @@ def _receipt_datetime(value):
     if stamp.tzinfo is None:
         raise ValueError("Snapshot times must include UTC offsets")
     return stamp
+
+
+def _calendar_cell_problems(receipt, calendar):
+    """Check evidence relationships independently of unsigned checksums."""
+    problems = []
+    focus, records = calendar.get("focus_comparison"), calendar.get("summary_records")
+    if not isinstance(focus, dict) or not isinstance(records, dict):
+        raise ValueError("Calendar focus comparison and summary records must be objects")
+    start, end = calendar.get("year_start"), calendar.get("year_end")
+    year, month = calendar.get("focus_year"), calendar.get("focus_month")
+    if (any(type(value) is not int for value in (start, end, year, month))
+            or not 2000 <= start <= year <= end <= 2026 or not 1 <= month <= 12):
+        raise ValueError("Calendar window and focus must be supported integer periods")
+    for field in ("year_start", "year_end", "focus_year", "focus_month", "mode"):
+        if calendar.get(field) != receipt["options"].get(field):
+            problems.append(f"calendar.{field} disagrees with analysis options")
+    expected_periods = {(y, m) for y in range(start, end + 1) for m in range(1, 13)}
+    by_period = {}
+    metrics = ("value", "hhe_total", "raw_total", "raw_modis", "raw_viirs", "frp_total_mw")
+    focus_fields = ("year", "month", "month_name", *metrics, "frp_measured_events", "frp_missing_events",
+                    "night_share", "anomaly_abs", "anomaly_pct", "z_robust", "empirical_percentile",
+                    "severity_band", "is_observed", "is_complete", "coverage_status")
+    for cell in calendar["cells"]:
+        if not isinstance(cell, dict) or any(field not in cell for field in focus_fields):
+            raise ValueError("Calendar cells must contain their required evidence fields")
+        if type(cell["year"]) is not int or type(cell["month"]) is not int:
+            raise ValueError("Calendar cell periods must be integers")
+        key = cell["year"], cell["month"]
+        if key in by_period:
+            problems.append(f"duplicate calendar cell {key}")
+        by_period[key] = cell
+        if any(type(cell[field]) is not bool for field in ("is_observed", "is_complete")):
+            raise ValueError("Calendar observation flags must be booleans")
+        for field in metrics:
+            if cell[field] is not None and (type(cell[field]) not in (int, float) or not math.isfinite(cell[field])):
+                raise ValueError(f"Calendar cell {field} must be a finite number or null")
+        if cell["is_observed"] != (cell["value"] is not None):
+            problems.append(f"calendar cell {key} observation flag disagrees with its value")
+        if cell.get("aoi_id") != receipt["aoi"]["aoi_id"]:
+            problems.append(f"calendar cell {key} disagrees with the AOI")
+    if set(by_period) != expected_periods:
+        problems.append("calendar cells must cover every year/month in the declared window exactly once")
+    if problems:
+        return problems
+
+    ordered = [by_period[key] for key in sorted(by_period)]
+    focus_cell = by_period[(year, month)]
+    for field in (*focus_fields, "observed_value", "value_is_counterfactual"):
+        if (field in focus_fields and field not in focus) or focus.get(field) != focus_cell.get(field):
+            problems.append(f"focus_comparison.{field} disagrees with its calendar cell")
+    for name in ("median", "mean", "iqr", "p90", "p95"):
+        if f"hist_{name}_hhe" not in focus_cell:
+            raise ValueError("Focus cell lacks its reference evidence")
+        if f"hist_{name}" not in focus or focus[f"hist_{name}"] != focus_cell[f"hist_{name}_hhe"]:
+            problems.append(f"focus_comparison.hist_{name} disagrees with its calendar cell")
+
+    observed = [cell for cell in ordered if cell["is_observed"]]
+    history = [cell for cell in observed if cell["month"] == month]
+    rank = 1 + sum(cell["value"] > focus_cell["value"] for cell in history) if focus_cell["is_observed"] else None
+    if focus.get("rank_in_history") != rank or focus.get("history_years_count") != len(history):
+        problems.append("focus comparison rank/support disagrees with calendar cells")
+    for field, metric in (("max_cell_value", "value"), ("max_hhe_value", "hhe_total")):
+        if calendar.get(field) != max((cell[metric] for cell in observed), default=0):
+            problems.append(f"calendar.{field} disagrees with calendar cells")
+
+    annual = calendar.get("annual_series")
+    if not isinstance(annual, list) or any(not isinstance(row, dict) or type(row.get("year")) is not int for row in annual):
+        raise ValueError("Annual series must contain integer-year evidence objects")
+    if len(annual) != end - start + 1 or {row["year"] for row in annual} != set(range(start, end + 1)):
+        return [*problems, "annual series must cover each displayed year exactly once"]
+    complete_years = []
+    for row in sorted(annual, key=lambda item: item["year"]):
+        cells = [cell for cell in observed if cell["year"] == row["year"]]
+        complete = all(by_period[(row["year"], m)]["is_complete"] for m in range(1, 13))
+        expected = {"is_complete": complete, "observed_months": len(cells)}
+        for field in metrics:
+            values = [cell[field] for cell in cells if cell[field] is not None]
+            expected[field] = round(math.fsum(values), 6) if values else None
+        if any(field not in row or row[field] != value for field, value in expected.items()):
+            problems.append(f"annual series {row['year']} disagrees with calendar cells")
+        if complete:
+            complete_years.append({"year": row["year"], **expected})
+
+    peak = max(observed, key=lambda cell: cell["value"]) if observed else focus_cell
+    expected_peak = {field: peak[field] for field in ("year", "month", "month_name", "value", "hhe_total")}
+    peak_year = max(complete_years, key=lambda row: row["value"]) if complete_years else None
+    points = [(row["year"], row["value"]) for row in complete_years]
+    expected_records = {"peak_month_record": expected_peak,
+                        "peak_year": peak_year["year"] if peak_year else None,
+                        "peak_year_value": peak_year["value"] if peak_year else None,
+                        "trend_complete_year_count": len(complete_years),
+                        "trend_slope_per_decade": ols_slope_per_decade(points),
+                        "theil_sen_slope_per_decade": theil_sen_per_decade(points),
+                        "harmonized_trend_slope_per_decade": ols_slope_per_decade([(row["year"], row["hhe_total"]) for row in complete_years]),
+                        "raw_trend_slope_per_decade": ols_slope_per_decade([(row["year"], row["raw_total"]) for row in complete_years])}
+    for field, value in expected_records.items():
+        if field not in records or records[field] != value:
+            problems.append(f"summary_records.{field} disagrees with calendar cells")
+    return problems
 
 
 def _snapshot_problems(receipt, calendar):
@@ -239,6 +340,7 @@ def check_receipt(receipt: dict[str, Any]) -> dict[str, Any]:
                 problems.append(f"calendar_summary.{key} disagrees with full calendar evidence")
         if sha256_of(calendar["cells"]) != cal_summary.get("cells_sha256"):
             problems.append("calendar cells_sha256 mismatch")
+        problems.extend(_calendar_cell_problems(receipt, calendar))
         problems.extend(_snapshot_problems(receipt, calendar))
         problems.extend(_model_source_problems(receipt))
     else:

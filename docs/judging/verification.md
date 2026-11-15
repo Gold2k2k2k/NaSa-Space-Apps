@@ -80,3 +80,6 @@ accessibility/usability study. File identities are in [screenshot metadata](resu
   independent field validation and deployment remain external follow-up.
 
 The 2025 rubric is a labeled fallback; see [criterion evidence and limits](evidence.md).
+
+The subsequent [calendar receipt consistency repair](receipt-calendar-fix.md)
+adds verification relationships and regression tests beyond the checkpoint above.
