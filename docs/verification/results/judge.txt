@@ -1,0 +1,7 @@
+[PASS] 1. Deterministic Verdict Seal: AOI-AMZ run twice -> CRITICAL_ANOMALY, identical seal 6972ecd130877044...
+[PASS] 2. Generated Sensor-Transition Diagnostics: AOI-MEK 2012 jump +384.1% -> -11.3% (97.1% bias reduction, R²=0.948)
+[PASS] 3. Cell-Window Occupancy Aggregation: Collapsed 7,488 raw detections into 4,457 1 km cell-window events (3,031 row-to-window reduction; not verified same-fire duplicates)
+[PASS] 4. Supplied Non-Vegetation Guard: Generated AOI-FLR (94.6% supplied non-vegetation types): guard ON -> UNVERIFIABLE; guard OFF -> NOMINAL_REGIME
+[PASS] 5. Offline Receipt & Tamper Detection: verify.py real=exit 0, forged=exit 1 (TAMPERED: receipt_sha256 mismatch: receipt contents changed)
+[PASS] 6. Immutable Mode and Median Experiments: AOI-MEK Harmonized -> ELEVATED_WATCH (Z=+3.02); Raw -> CRITICAL_ANOMALY (Z=+3.25)
+[PASS] 7. CSV / GeoJSON / iCalendar Exports: Hotspots CSV (2806 lines), Calendar CSV (325 lines), GeoJSON (2806 features), ICS (43 events)

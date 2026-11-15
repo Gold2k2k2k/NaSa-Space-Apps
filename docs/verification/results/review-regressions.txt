@@ -1,0 +1,11 @@
+test_collinear_overlap_is_rejected_but_shared_boundaries_are_allowed (test_final_review_regressions.TestFinalReviewRegressions.test_collinear_overlap_is_rejected_but_shared_boundaries_are_allowed) ... ok
+test_january_rule_context_survives_a_narrow_display_window (test_final_review_regressions.TestFinalReviewRegressions.test_january_rule_context_survives_a_narrow_display_window) ... ok
+test_outside_window_context_is_bound_and_verified_in_receipt (test_final_review_regressions.TestFinalReviewRegressions.test_outside_window_context_is_bound_and_verified_in_receipt) ... ok
+test_records_in_every_month_do_not_establish_complete_transition_years (test_final_review_regressions.TestFinalReviewRegressions.test_records_in_every_month_do_not_establish_complete_transition_years) ... ok
+test_reordered_valid_and_mixed_csvs_have_identical_snapshots_and_packages (test_final_review_regressions.TestFinalReviewRegressions.test_reordered_valid_and_mixed_csvs_have_identical_snapshots_and_packages) ... ok
+test_reordered_uploads_can_reuse_the_same_snapshot_without_conflict (test_final_review_regressions.TestRepeatCSVHTTP.test_reordered_uploads_can_reuse_the_same_snapshot_without_conflict) ... ok
+
+----------------------------------------------------------------------
+Ran 6 tests in 1.786s
+
+OK

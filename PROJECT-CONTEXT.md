@@ -15,11 +15,14 @@ Schema Manifesto, and Trap Bench.
 
 ## Current phase
 
-The approved upgrade is implemented on `codex/firetrace-upgrade`: validated
+The approved continuation is complete on `codex/firetrace-upgrade`. Validated
 inputs, scientific/coverage semantics, immutable workflows, receipts/exports,
-modeled passes and the tokenized five-view dashboard. Final fresh-environment
-verification and independent Standards/Spec review are in progress. Antigravity
-provided surveys and planning; its interrupted implementation was continued here.
+modeled passes and the tokenized five-view dashboard are implemented. The fresh
+Python 3.11 environment passed 144 tests, judge 7/7, smoke 3/3 and bench 12/12.
+Independent Standards/Spec findings are closed; the rendered visual audit scored
+88/100. [Completion evidence](docs/verification/completion.md) records results,
+all 76 recovered survey dispositions and practical verification limits.
+Antigravity supplied the recovered planning/surveys; implementation continued here.
 
 ## Constraints
 

@@ -1,0 +1,1131 @@
+[
+  {
+    "id": "backend:BUG-01",
+    "source_handoff": "teamwork_explorer_survey_1/handoff.md",
+    "original_cells": [
+      "**BUG-01**",
+      "**CRITICAL**",
+      "`app/agents.py:519-532, 603` & `app/datasets.py:308-364`",
+      "Architect / QA (Data Clumps, Broken Round-Trip)",
+      "`run_investigation` stores `aoi[\"polygon\"]` (not `geojson`) in `run_state[\"aoi\"]`. On any `apply_what_if` call (`mode`, `flare_guard`, `focus_period`, `persona`), `req = {**run_state[\"aoi\"], **opts}` lacks `\"geojson\"`, so `parse_custom_aoi` ignores `polygon`, replaces the user's polygon (or uploaded CSV bbox) with `_square_ring(lat, lon, radius_km)`, alters `area_km2` (via rounded `radius_km`), changes `aoi_id`, re-seeds RNG, and mutates `verdict_sha256`.",
+      "Accept `spec.get(\"polygon\")` directly in `parse_custom_aoi` (preserving explicit `aoi_id`, `name`, `country`, `biome` when `is_uploaded_csv`/`is_custom` is passed in `apply_what_if`), and hash the canonical polygon vertex ring via SHA-256 so geometry round-trips losslessly."
+    ],
+    "disposition": "Full geometry and sources survive all experiments",
+    "implementation": "app/agents.py; app/run_state.py",
+    "verification": "test_analysis_workflows.py; test_browser_showcase.py"
+  },
+  {
+    "id": "backend:BUG-02",
+    "source_handoff": "teamwork_explorer_survey_1/handoff.md",
+    "original_cells": [
+      "**BUG-02**",
+      "**CRITICAL**",
+      "`verify.py:44-60` & `app/rules.py:144-157`",
+      "Security / Architect (Broken Cryptographic Invariant)",
+      "`decide()` inspects `calendar[\"cells\"]` to detect `early_season_onset` (`prev_cell`). `build_receipt()` omits `cells` and `verify.py:55` hardcodes `\"cells\": []`. Whenever `early_season_onset` triggers (reproduced on `AOI-AMZ 2023-05`, `AOI-CAL 2021-10`, `AOI-NSW 2004-03`, `AOI-MIO 2006-09`), `verify.py` fails to re-derive the finding and falsely rejects FireTrace's own valid receipt as `TAMPERED` (`exit 1`).",
+      "Include `prev_month_z_robust` / `prev_month_name` (or compact observed `cells` / `focus_context`) inside `calendar[\"focus_comparison\"]` (which is already serialized in `receipt.json` and cross-checked against `Q7`) so `decide()` is 100% self-contained without scanning `calendar[\"cells\"]`, OR embed `cells` and verify `sha256_of(cells) == cells_sha256` in `verify.py`. Doing BOTH makes `verify.py` airtight!"
+    ],
+    "disposition": "V2 embeds full calendar; verifier rederives all rule context; v1 frozen with narrower scope",
+    "implementation": "app/receipt.py; verify.py",
+    "verification": "test_receipt_integrity.py"
+  },
+  {
+    "id": "backend:BUG-03",
+    "source_handoff": "teamwork_explorer_survey_1/handoff.md",
+    "original_cells": [
+      "**BUG-03**",
+      "**CRITICAL**",
+      "`app/agents.py:578-599` & `verify.py:38-41`",
+      "Developer / QA (Shotgun Surgery / Mutation)",
+      "`apply_what_if(..., \"focus_to_median\", True)` mutates `updated[\"calendar\"][\"focus_comparison\"][\"value\"]` in-place on a deepcopy without updating `updated[\"queries\"]` (`Q6.rows[0].focus_value` and `Q6.sha256` or `Q4`). Downloading `receipt.json` after clicking that UI counterfactual button fails `verify.py` with `TAMPERED: Q6 focus_value disagrees with calendar_summary.focus_comparison.value`.",
+      "Rebuild `queries` via `_build_query_tables(...)` (and avoid in-place mutation) inside the `focus_to_median` branch so `Q4`/`Q6` hashes and `calendar_summary` remain cryptographically synchronized."
+    ],
+    "disposition": "Median is explicit new metric scenario; queries/calendar/receipt rebuilt; observed input unchanged",
+    "implementation": "app/run_state.py; app/agents.py",
+    "verification": "test_analysis_workflows.py; test_browser_showcase.py"
+  },
+  {
+    "id": "backend:BUG-04",
+    "source_handoff": "teamwork_explorer_survey_1/handoff.md",
+    "original_cells": [
+      "**BUG-04**",
+      "**CRITICAL**",
+      "`app/api.py:207`",
+      "Security (Unbounded Memory DoS)",
+      "`raw_bytes = await file.read()` reads arbitrary-sized multipart uploads into memory before checking size. A multi-hundred-MB upload exhausts server memory.",
+      "Enforce a strict byte cap (e.g., `MAX_CSV_BYTES = 10 * 1024 * 1024` = 10 MB) via chunked/bounded read `await file.read(MAX_CSV_BYTES + 1)`, returning HTTP `413` or `422` if exceeded, and reject NUL bytes / binary payloads cleanly."
+    ],
+    "disposition": "Bounded streamed multipart envelope and file read",
+    "implementation": "app/http_limits.py; app/api.py",
+    "verification": "test_http_boundaries.py"
+  },
+  {
+    "id": "backend:BUG-05",
+    "source_handoff": "teamwork_explorer_survey_1/handoff.md",
+    "original_cells": [
+      "**BUG-05**",
+      "**HIGH**",
+      "`app/api.py:189-194, 236-242` & `app/agents.py:406-436, 568-573`",
+      "Security / QA (Missing Boundary Validation → HTTP 500)",
+      "`api.py` uses untyped `dict[str, Any] = Body(...)` and only catches `ValueError`. Sending `focus_month=13` raises unhandled `IndexError` at `MONTH_NAMES[focus_month - 1]` (`agents.py:436`); `focus_month=0` or `-1` wraps via Python negative indexing to `\"Dec\"` in trace while `calendar_engine.py:255` clamps to `\"Jan\"`; `year_start=null` or `focus_period=null` / `[2026]` raises unhandled `TypeError`/`IndexError` (HTTP 500).",
+      "Validate all request bodies via strict Pydantic models (or explicit boundary validators raising `ValueError` → HTTP 422): enforce `2000 <= year_start <= year_end <= 2026`, `1 <= focus_month <= 12`, `year_start <= focus_year <= year_end`, valid `mode`, `confidence_min`, `persona`, and `focus_period` 2-tuple `[year, month]`."
+    ],
+    "disposition": "Typed strict analysis/what-if contracts and controlled errors",
+    "implementation": "app/models.py; app/api.py",
+    "verification": "test_http_boundaries.py; test_inputs_geometry.py"
+  },
+  {
+    "id": "backend:BUG-06",
+    "source_handoff": "teamwork_explorer_survey_1/handoff.md",
+    "original_cells": [
+      "**BUG-06**",
+      "**HIGH**",
+      "`app/datasets.py:364, 393-395, 646` & `app/agents.py:427`",
+      "Determinism / Architect",
+      "`custom_id` (`CUSTOM-xxxx`) and CSV `aoi_id` (`CSV-xxxx`) use Python's platform/version-dependent `hash(...) % 10000`. Two distinct polygons with the same rounded centroid & area collide onto the same `aoi_id`, RNG `_seed_for`, and `run_id`. Furthermore, two different uploaded CSVs with the same `(len(rows), round(c_lat, 2), round(c_lon, 2))` get the exact same `run_id`, overwriting each other in `RUNS` because `run_id` hashes only `aoi_id` + `options`, not raw CSV digest or polygon coordinates!",
+      "Replace all `hash(...)` calls with `sha256_of(...)` over canonicalized polygon coordinates (for custom AOIs) and raw normalized record digest (for uploaded CSVs), and include geometry/dataset digest in `_seed_for` and `run_id`."
+    ],
+    "disposition": "SHA-256 canonical geometry/data/options/code/reference identity; immutable collision checks",
+    "implementation": "app/canonical.py; app/run_state.py; app/run_store.py",
+    "verification": "test_analysis_workflows.py; test_inputs_geometry.py; test_run_store.py"
+  },
+  {
+    "id": "backend:BUG-07",
+    "source_handoff": "teamwork_explorer_survey_1/handoff.md",
+    "original_cells": [
+      "**BUG-07**",
+      "**HIGH**",
+      "`app/rules.py:144-157`",
+      "Science / Logic",
+      "Two logic bugs in `early_season_onset`: (1) When `focus[\"month\"] == 1` (Jan), `prev_mo = 12` looks up `c[\"year\"] == focus[\"year\"] and c[\"month\"] == 12` (**Dec of the SAME year, 11 months in the future!**) instead of `focus[\"year\"] - 1`; (2) Only checking `not focus[\"is_peak_season\"]` causes post-peak autumn decay months immediately following peak season (`AOI-CAL` Oct, `AOI-NSW` Mar, `AOI-MIO` Sep) to be mislabelled `\"early fire-season onset\"`.",
+      "Look up `(focus[\"year\"] - 1, 12)` when `focus[\"month\"] == 1`, and verify that `focus[\"month\"]` is genuinely **pre-peak** (e.g., `next_mo in peak_months` or rising climatological slope toward peak, distinguishing `early_season_onset` from `late_season_persistence`)."
+    ],
+    "disposition": "Previous December uses previous year; onset restricted to two pre-onset months",
+    "implementation": "app/rules.py; app/calendar_engine.py",
+    "verification": "test_science_contracts.py"
+  },
+  {
+    "id": "backend:BUG-08",
+    "source_handoff": "teamwork_explorer_survey_1/handoff.md",
+    "original_cells": [
+      "**BUG-08**",
+      "**HIGH**",
+      "`app/agents.py:371`",
+      "Developer (Dead Code & Wrong Field Value)",
+      "`\"z_before\": round(float(med_cal[\"focus_comparison\"][\"z_robust\"] if False else alt_cal[\"focus_comparison\"][\"z_robust\"]), 2)` contains leftover `if False` dead code and assigns `alt_cal` (`z_after`!) to `z_before` (`6.08` instead of `7.50` on `AOI-AMZ`).",
+      "Compute `z_before` from the active base calendar (`active_cal[\"focus_comparison\"][\"z_robust\"]`) and also expose `z_after` (`alt_cal[\"focus_comparison\"][\"z_robust\"]`) on all 3 counterfactual experiments."
+    ],
+    "disposition": "Before/after metrics computed from correct active/alternate calendars; removed dead branch",
+    "implementation": "app/agents.py",
+    "verification": "test_analysis_workflows.py"
+  },
+  {
+    "id": "backend:BUG-09",
+    "source_handoff": "teamwork_explorer_survey_1/handoff.md",
+    "original_cells": [
+      "**BUG-09**",
+      "**HIGH**",
+      "`verify.py:30-60`",
+      "Security (Incomplete Tamper Detection)",
+      "`verify.py` checks Q0–Q8 internal row hashes and `Q6.focus_value == fc.value`, but NEVER verifies `calendar_summary.cells_sha256` and NEVER cross-checks `Q0` (`aoi_id`, `lat`, `lon`), `Q3` (`calibrated_kappa`), `Q4` (`focus_night_share`), `Q5` (`flare_contamination_share`), `Q6` (`hist_median`, `hist_p95`, `z_robust`), `Q7` (`peak_months`), or `Q8` (`trend_slope_per_decade`, `bias_reduction_pct`) against `evidence`. An attacker can forge `Q0`–`Q5`/`Q7`–`Q8` + their row `sha256`s inside `receipt.json` without `verify.py` noticing!",
+      "Cross-check all Q0–Q8 summary metrics against `aoi`, `calendar_summary`, and `sensor_calibration_audit` (and verify `cells_sha256` if `cells` are included or via a binding receipt manifest hash)."
+    ],
+    "disposition": "All nine required queries/counts/hashes and evidence/decision relationships verified; unsigned scope explicit",
+    "implementation": "app/evidence.py; verify.py",
+    "verification": "test_receipt_integrity.py"
+  },
+  {
+    "id": "backend:BUG-10",
+    "source_handoff": "teamwork_explorer_survey_1/handoff.md",
+    "original_cells": [
+      "**BUG-10**",
+      "**HIGH**",
+      "`app/datasets.py:331-355, 428-436, 463-464`",
+      "Security / Geometry Validation",
+      "`parse_custom_aoi` accepts: (a) polygons with unlimited vertices (500k-vertex polygon causes O(N·V) CPU DoS in `point_in_polygon`); (b) collinear/zero-area degenerate polygons (`[[0,0],[1,1],[2,2],[0,0]]`); (c) self-intersecting bow-tie polygons; (d) non-list/short coordinates `[10]` raising 500 `IndexError`/`TypeError`; (e) concave C-polygons where centroid `(aoi[\"lat\"], aoi[\"lon\"])` lies outside the polygon, yet `generate_firms_records` falls back to `(cx, cy) = centroid` outside the user's AOI!",
+      "Enforce vertex count bounds (`4 <= len(ring) <= 2000`), validate 2-element finite `[lon, lat]` pairs, reject zero-area (`polygon_area_km2 <= 0.01`), self-intersecting, or antimeridian-spanning (`lon_max - lon_min > 180`) rings with clear HTTP 422 errors, and guarantee interior fallback points via vertex/ear midpoint sampling."
+    ],
+    "disposition": "Strict bounded full geometry with holes/components; invalid rings rejected, observations remain in AOI",
+    "implementation": "app/geometry.py; app/datasets.py",
+    "verification": "test_inputs_geometry.py; test_science_contracts.py"
+  },
+  {
+    "id": "backend:BUG-11",
+    "source_handoff": "teamwork_explorer_survey_1/handoff.md",
+    "original_cells": [
+      "**BUG-11**",
+      "**HIGH**",
+      "`app/datasets.py:21-31, 343-351, 360-362, 614-642` & `app/api.py:216-225`",
+      "QA / Boundary Geometry",
+      "(1) `_square_ring` near poles (`",
+      "lat",
+      "> 87.7°`) or antimeridian (`",
+      "lon",
+      "> 177°`) generates vertices outside `[-90, 90]` / `[-180, 180]`; (2) `parse_uploaded_csv` neither filters out-of-bounds rows (`lat=999`) before computing `min`/`max` bbox nor clamps `pad_lat`/`pad_lon` to `[-90, 90]`/`[-180, 180]`, causing valid high-latitude/Pacific CSV uploads or CSVs with 1 corrupt row to crash `parse_custom_aoi` with HTTP 422; (3) CSVs where all rows have invalid `acq_date` pass `parse_uploaded_csv` (`rows` appended before date parse at `:619-627`).",
+      "Clamp `_square_ring` and CSV padded bbox rings to `[-90.0, 90.0]` and `[-180.0, 180.0]`; validate `-90 <= lat <= 90`, `-180 <= lon <= 180`, and valid ISO `acq_date` inside `parse_uploaded_csv` (tracking `skipped_invalid_rows` cleanly and rejecting CSVs with 0 valid FIRMS rows)."
+    ],
+    "disposition": "Dateline/polar bounds and geometry identity; CSV focus follows latest valid row",
+    "implementation": "app/geometry.py; app/datasets.py",
+    "verification": "test_inputs_geometry.py"
+  },
+  {
+    "id": "backend:BUG-12",
+    "source_handoff": "teamwork_explorer_survey_1/handoff.md",
+    "original_cells": [
+      "**BUG-12**",
+      "**MEDIUM**",
+      "`app/receipt.py:71-81` & `app/agents.py:27-28, 43`",
+      "Determinism (Export / ZIP / Trace)",
+      "`package_zip` uses `zf.writestr(\"filename\", ...)` which stamps `time.localtime()` into every `ZipInfo.date_time` header, and `evidence.json` embeds `trace[*].timestamp = datetime.now(timezone.utc)`. Calling `/runs/{run_id}/package` twice produces non-identical `.zip` bytes. Also `csv.DictWriter` emits `\\r\\n` while JSON/MD emit `\\n`.",
+      "Write ZIP entries using deterministic `ZipInfo(filename, date_time=(2026, 11, 14, 0, 0, 0))` with fixed `compress_type=zipfile.ZIP_DEFLATED` and `external_attr=0o644 << 16`, normalize CSV `lineterminator=\"\\n\"`, and keep `verdict_sha256` / `receipt.json` completely timestamp-free (or use deterministic logical step sequence in receipts)."
+    ],
+    "disposition": "Fixed reference trace and sorted ZIP epoch/permissions/compression; byte equality",
+    "implementation": "app/agents.py; app/receipt.py",
+    "verification": "test_receipt_integrity.py; test_analysis_workflows.py"
+  },
+  {
+    "id": "backend:BUG-13",
+    "source_handoff": "teamwork_explorer_survey_1/handoff.md",
+    "original_cells": [
+      "**BUG-13**",
+      "**MEDIUM**",
+      "`app/web/static/app.js:173-186, 219-239`",
+      "Frontend↔Backend Contract Bug",
+      "Selecting a preset pill (e.g., `AOI-AMZ`) fills `#in-lat`/`#in-lon`/`#in-radius`, but submitting `#query-form` (\"Analyze Region\") after changing only year/month/confidence omits `aoi_id`, silently converting preset `AOI-AMZ` (`CRITICAL_ANOMALY`) into synthetic `Custom AOI` (`CUSTOM-8824`, `NOMINAL_REGIME`) while leaving the `AOI-AMZ` pill highlighted as `.active`!",
+      "Track `state.selectedPresetId`; clear it only when `#in-lat`, `#in-lon`, or `#in-radius` changes from the preset's coordinates, and include `aoi_id` in `#query-form` submit when unchanged."
+    ],
+    "disposition": "Source-preserving option form uses retained snapshot; no accidental preset-to-custom conversion",
+    "implementation": "app/web/static/app.js",
+    "verification": "test_browser_showcase.py"
+  },
+  {
+    "id": "backend:BUG-14",
+    "source_handoff": "teamwork_explorer_survey_1/handoff.md",
+    "original_cells": [
+      "**BUG-14**",
+      "**MEDIUM**",
+      "`app/calendar_engine.py:162, 255` & `app/agents.py:418-419`",
+      "Logic / Edge Case",
+      "`is_observed = not (yr == 2026 and mo == 12)` is hardcoded globally: (a) uploaded FIRMS CSVs containing December 2026 rows silently have all Dec 2026 detections zeroed out; (b) uploaded CSVs ending in e.g. 2023 falsely mark 2024–Nov 2026 as observed `0.0` fire months; (c) requesting `focus_year=2026, focus_month=12` leaves `options.focus_month = 12` while `calendar.focus_month = 11`.",
+      "For uploaded CSVs, derive observed window from actual dataset coverage (or `year_start..year_end`); synchronize `options[\"focus_year\"]`/`options[\"focus_month\"]` with effective focus period or reject unobserved focus months cleanly."
+    ],
+    "disposition": "Missing/records_only/complete coverage; explicit focus preserved, December CSV not discarded",
+    "implementation": "app/calendar_engine.py",
+    "verification": "test_science_contracts.py; test_inputs_geometry.py"
+  },
+  {
+    "id": "backend:BUG-15",
+    "source_handoff": "teamwork_explorer_survey_1/handoff.md",
+    "original_cells": [
+      "**BUG-15**",
+      "**MEDIUM**",
+      "`app/calendar_engine.py:164, 170-171`",
+      "Math / Rounding Bug",
+      "`night_share = round(b[\"night_hhe\"] / denom_metric, 4)` divides unrounded `b[\"night_hhe\"]` by already-rounded `hhe_total = round(b[\"hhe\"], 2)`. When 100% of detections are nocturnal and `b[\"hhe\"]` rounds down (e.g., `1.234 -> 1.23`), `night_share` exceeds `1.0` (`100.33%`).",
+      "Compute `night_share = min(1.0, max(0.0, round(b[\"night_hhe\"] / b[\"hhe\"], 4)))` using unrounded `b[\"hhe\"] > 0` before display rounding."
+    ],
+    "disposition": "Known D/N share computed from unrounded contributions and bounded by its denominator",
+    "implementation": "app/calendar_engine.py",
+    "verification": "test_science_contracts.py"
+  },
+  {
+    "id": "backend:BUG-16",
+    "source_handoff": "teamwork_explorer_survey_1/handoff.md",
+    "original_cells": [
+      "**BUG-16**",
+      "**MEDIUM**",
+      "`app/harmonize.py:124-126, 215-218, 250-255`",
+      "Core Science",
+      "Three harmonization defects: (1) `overpass_dedup_factor` is computed (`:125`) and exported, **never used** in `modis_w`/`viirs_w`/`hhe`; (2) `_pearson_r2(xs, ys)` where `ys = kappa * V_m` is algebraically invariant to scalar `kappa > 0`, masking scale/step errors; (3) In `m_val > 0 and v_val > 0` months (`:253-255`), `target_hhe / raw_sum_contrib` simplifies identically to `0.5`, halving standalone morning Terra MODIS-only cells relative to pre-2012 months.",
+      "Incorporate constellation-era normalization (S-NPP 2012+, S-NPP+NOAA-20 2018+, +NOAA-21 2023+), report both Pearson $r^2$ and 1:1 calibration skill ($R^2_{\\text{1:1}}$ / MAE), and weight co-detected vs single-sensor cells physically while preserving `judge.py` invariants."
+    ],
+    "disposition": "Unique observation revisions, satellite family mean occupancy; R2 separate from efficiency/RMSE. Monthly half-blend is an explicit index convention, not physical equivalence",
+    "implementation": "app/observations.py; app/harmonize.py; docs/SCIENCE.md",
+    "verification": "test_science_contracts.py"
+  },
+  {
+    "id": "backend:BUG-17",
+    "source_handoff": "teamwork_explorer_survey_1/handoff.md",
+    "original_cells": [
+      "**BUG-17**",
+      "**MEDIUM**",
+      "`app/datasets.py:479, 535-553`",
+      "Science / Synthetic Benchmark Generator",
+      "Pre-2012 (`yr < 2012`), `elif not modis_emitted:` forces 100% of small agricultural fires to emit a MODIS record anyway, whereas post-2012 (`yr >= 2012`) 35% of agricultural fires omit MODIS. This creates an artificial `-28%` drop in raw MODIS counts in 2012 on `AOI-MEK`, explaining why harmonized `AOI-MEK` jumps `-29.8%` in 2012!",
+      "Audit carefully: any tweak to `generate_firms_records` will change `AOI-AMZ`/`AOI-MEK`/`AOI-FLR` seals in `output_examples/*.json`. Document or refine only if regenerating `output_examples/*.json` and keeping all 12 `BENCH_CASES` + 7 `judge.py` claims green!"
+    ],
+    "disposition": "Removed forced pre-2012 MODIS detection; availability and omission applied consistently",
+    "implementation": "app/datasets.py; app/satellites.py",
+    "verification": "test_science_contracts.py"
+  },
+  {
+    "id": "backend:BUG-18",
+    "source_handoff": "teamwork_explorer_survey_1/handoff.md",
+    "original_cells": [
+      "**BUG-18**",
+      "**MEDIUM**",
+      "`app/geo_passes.py:105-141`",
+      "Core Science (Orbital Geometry)",
+      "Uses flat-Earth `atan2(cross_km, altitude_km)` instead of spherical-Earth viewing zenith angle (underestimating swath-edge VZA by ~8–10° and overestimating observer elevation), assigns different `day_lst_hour` (`13.50`, `13.42`, `13.33`) instead of same-plane `13:30` LST along-track phase separation for JPSS satellites, and omits off-nadir bow-tie pixel area growth (`scan × track` km²).",
+      "Compute true spherical Earth central angle $\\psi = d / R_E$, nadir angle $\\eta$, local Viewing Zenith Angle $\\text{VZA} = \\arcsin(\\frac{R_E+h}{R_E}\\sin\\eta)$, observer elevation $90^\\circ - \\text{VZA}$, ascending/descending pass node, and instantaneous pixel footprint `effective_pixel_km2`!"
+    ],
+    "disposition": "Spherical viewing geometry, bounded schematic nominal solar phase; footprint metadata/defaults explicit. No ephemeris or bow-tie correction claimed",
+    "implementation": "app/geo_passes.py; app/satellites.py; docs/EXPORTS.md",
+    "verification": "test_exports_passes.py; test_science_contracts.py"
+  },
+  {
+    "id": "backend:BUG-19",
+    "source_handoff": "teamwork_explorer_survey_1/handoff.md",
+    "original_cells": [
+      "**BUG-19**",
+      "**MEDIUM**",
+      "`app/exports.py:95-96` & `app/exports.py:12-47`",
+      "Security (RFC 5545 Control Char & CSV Formula Injection)",
+      "(1) `_ics_escape` escapes `\\`, `;`, `,`, `\\n` but leaves `\\r` and control chars unstripped, breaking RFC 5545 line grammar if `aoi[\"name\"]` contains `\\r`; (2) CSV exports do not neutralize leading spreadsheet formula triggers (`=`, `+`, `-`, `@`, `\\t`, `\\r`) on string fields (`aoi_id` or user-derived strings) and lack RFC 5545 75-octet line folding.",
+      "Normalize `\\r\\n`/`\\r` → `\\n` and strip control chars before `_ics_escape` (plus optional RFC 5545 75-octet folding), and sanitize leading formula characters on untrusted string cells in CSV exports."
+    ],
+    "disposition": "CSV formula neutralization and RFC5545 control normalization/UTF8 folding",
+    "implementation": "app/exports.py",
+    "verification": "test_exports_passes.py"
+  },
+  {
+    "id": "backend:BUG-20",
+    "source_handoff": "teamwork_explorer_survey_1/handoff.md",
+    "original_cells": [
+      "**BUG-20**",
+      "**MEDIUM**",
+      "`app/exports.py:24-26, 70`",
+      "Product / Data Completeness",
+      "(1) `export_hotspots_csv` slices `rows[:5000]` chronologically from year 2000, dropping 2026 focus-year hotspots on dense runs (contradicting its own comment on `:25`), and includes excluded static flare rows (`hhe=0.0`) without exporting `include_in_calendar`; (2) `export_hotspots_geojson` (`limit=600`) reads `map_hotspots` first (hard-capped at 450 in `agents.py:514`), ignoring `limit > 450`.",
+      "Export `include_in_calendar` in `hotspots.csv`, prioritize focus-year events or raise default limit cleanly so all benchmark runs export 100% of events, and slice `_hotspots_all` properly in `export_hotspots_geojson` when `limit > len(map_hotspots)`."
+    ],
+    "disposition": "Complete retained events by default, explicit inclusion/missing flags; labeled optional previews only",
+    "implementation": "app/exports.py",
+    "verification": "test_exports_passes.py; test_browser_showcase.py"
+  },
+  {
+    "id": "backend:BUG-21",
+    "source_handoff": "teamwork_explorer_survey_1/handoff.md",
+    "original_cells": [
+      "**BUG-21**",
+      "**MEDIUM**",
+      "`app/api.py:26-27, 139-143, 242`",
+      "Concurrency / State Management",
+      "Global `RUNS` dict has no lock (`threading.Lock`), uses FIFO eviction instead of LRU (`OrderedDict`), and `what_if` overwrites `RUNS[run_id]` in place even though `options` changed (mutating shared run state across browser tabs or previously downloaded URLs).",
+      "Guard `RUNS` with an `OrderedDict` + `threading.Lock` LRU cache; either assign derived `run_id` per distinct `(aoi, options)` state (while keeping old `run_id` cached!) or preserve immutable run snapshots."
+    ],
+    "disposition": "Copy-in/out locked bounded LRU and new content IDs for experiments",
+    "implementation": "app/run_store.py; app/run_state.py",
+    "verification": "test_run_store.py; test_analysis_workflows.py"
+  },
+  {
+    "id": "backend:BUG-22",
+    "source_handoff": "teamwork_explorer_survey_1/handoff.md",
+    "original_cells": [
+      "**BUG-22**",
+      "**LOW-MED**",
+      "`app/schema_mapping.py:342, 346, 352`",
+      "Developer / Data Fidelity",
+      "`clean_float(raw.get(\"frp\"), 12.0) or 0.0` silently invents `12.0 MW` when `frp` is missing/null in an uploaded CSV (`None` → default `12.0`), inflating radiative power and misclassifying missing-FRP daytime fires, and `clean_float(...) or fallback` conflates legitimate `0.0` with `None`.",
+      "Use explicit `is None` checks instead of truthiness `or`, and default missing `frp` conservatively (e.g. `0.0` or sensor-specific nominal floor) rather than `12.0 MW`."
+    ],
+    "disposition": "No invented FRP/temperature; valid zero preserved; missing flags exported",
+    "implementation": "app/schema_mapping.py; app/observations.py",
+    "verification": "test_science_contracts.py; test_inputs_geometry.py"
+  },
+  {
+    "id": "backend:BUG-23",
+    "source_handoff": "teamwork_explorer_survey_1/handoff.md",
+    "original_cells": [
+      "**BUG-23**",
+      "**LOW-MED**",
+      "`app/harmonize.py:65, 81` & `app/harmonize.py:210` vs `docs/MAPPING_MANIFESTO.md:46`",
+      "Spec vs. Code Drift",
+      "(1) Comment at `harmonize.py:65` promises `>= 8 distinct months in any year or >= 14 total months at same cell`, while `:81` omits the multi-year persistence check (missing flares in short 2-year CSVs with 7 months/yr); (2) `harmonize.py:210` fits overlap over `2012..2024` while `schema_mapping.py:224` & `MAPPING_MANIFESTO.md:46` say `2012–2025`.",
+      "Implement multi-year cell persistence (`len(ym_set) >= 14` when dataset spans $\\ge 2$ years) and align overlap window documentation & code consistently."
+    ],
+    "disposition": "Multi-year persistence is only a descriptive flag; supplied types distinct; shared overlap docs2012-2024",
+    "implementation": "app/observations.py; app/harmonize.py; app/schema_manifest.py",
+    "verification": "test_science_contracts.py; test_documentation.py"
+  },
+  {
+    "id": "backend:BUG-24",
+    "source_handoff": "teamwork_explorer_survey_1/handoff.md",
+    "original_cells": [
+      "**BUG-24**",
+      "**MEDIUM**",
+      "`app/web/static/app.js` (899 lines), `app/datasets.py` (664 lines), `app/agents.py` (616 lines)",
+      "Maintainability / Coding Standards (Divergent Change & Long Functions)",
+      "`app.js` (899 lines) breaches the 800-line soft ceiling. Several Python functions exceed the 50-line guideline: `harmonize_records` (`harmonize.py:43-339`, **297 lines!**), `build_burning_calendar` (`calendar_engine.py:61-328`, **268 lines!**), `generate_firms_records` (`datasets.py:398-596`, **199 lines!**), `run_investigation` (`agents.py:398-553`, **156 lines!**), `decide` (`rules.py:30-170`, **141 lines!**), `_compute_what_ifs` (`agents.py:294-395`, **102 lines!**), `parse_custom_aoi` (`datasets.py:305-390`, **86 lines!**).",
+      "Decompose giant functions into focused <50-line pure helpers (e.g. `_detect_persistent_flares`, `_cluster_cell_events`, `_fit_overlap_bridge`, `_compute_step_audit` in `harmonize.py`; modular ES modules or split view renderers for frontend)."
+    ],
+    "disposition": "Frontend split into focused modules; geometry/stats/observations/evidence/state/store extracted. Remaining cohesive algorithm functions retained; survey line ceilings were advisory, not repo rules",
+    "implementation": "app/web/static/js/; app/geometry.py; app/stats.py; app/observations.py",
+    "verification": "full regression suite; independent Standards review"
+  },
+  {
+    "id": "backend:BUG-25",
+    "source_handoff": "teamwork_explorer_survey_1/handoff.md",
+    "original_cells": [
+      "**BUG-25**",
+      "**MEDIUM**",
+      "`requirements.txt:1-9` & `run.py:13`",
+      "Packaging / DX Readiness",
+      "`requirements.txt` includes 4 unused heavy libraries (`numpy`, `pandas`, `requests`, `cryptography`), omits test runner `pytest`, and `run.py:13` hard-crashes if `python-dotenv` isn't installed even when no `.env` file is needed. Host Python currently lacks `fastapi`, `python-dotenv`, and `pytest`.",
+      "Install required packages in workspace Python/venv; make `dotenv` optional (`try: from dotenv import load_dotenv except ImportError: ...`) or ensure `requirements.txt` is lean, accurate, and matches `README.md` setup instructions."
+    ],
+    "disposition": "Pinned minimal runtime plus dev browser dependency; stdlib unittest, multipart declared; fresh venv installed",
+    "implementation": "requirements.txt; requirements-dev.txt; README.md",
+    "verification": "fresh install and pip check; full suite; smoke_test.py"
+  },
+  {
+    "id": "backend:BUG-26",
+    "source_handoff": "teamwork_explorer_survey_1/handoff.md",
+    "original_cells": [
+      "**BUG-26**",
+      "**LOW**",
+      "`app/api.py:305-317` & `README.md:83-99`",
+      "API Polish & Docs Sync",
+      "(1) `GET /api/passes?aoi_id=UNKNOWN` returns misleading `422 Provide aoi_id or lat and lon` instead of `Unknown aoi_id: 'UNKNOWN'`; (2) `GET /runs/{run_id}` exists in `app/api.py:230` but is missing from `README.md` HTTP API table.",
+      "Return explicit 404/422 on unknown `aoi_id` in `/api/passes` and document all endpoints accurately in `README.md` and `docs/ARCHITECTURE.md`."
+    ],
+    "disposition": "Unknown preset gets explicit validation error; GET snapshot documented",
+    "implementation": "app/api.py; README.md",
+    "verification": "test_http_boundaries.py; test_documentation.py"
+  },
+  {
+    "id": "ui:F-01",
+    "source_handoff": "teamwork_explorer_survey_2/handoff.md",
+    "original_cells": [
+      "**F-01**",
+      "**CRITICAL**",
+      "`app/web/static/app.css:138, 149, 190, 219-221`",
+      "**Mobile `375px` Horizontal Viewport Overflow (`docW = 556px`)**: `.workspace-split` (`1040px` media query) uses `grid-template-columns: 1fr` (`minmax(auto, 1fr)`) and `.card` / `.calendar-card` lack `min-width: 0`. The 13-column `.cal-matrix` (`~498px` min-content) stretches `.calendar-card` to `540px`, blowing out `document.documentElement.scrollWidth` instead of scrolling inside `.calendar-scroll`. Also `.bar-in` & `.foot-in` (`app.css:57, 217`) keep `28px` horizontal padding below `640px`, and `.whatif-grid`/`.refutation-grid` (`:211`) use `minmax(260px, 1fr)` instead of `minmax(min(100%, 260px), 1fr)`."
+    ],
+    "disposition": "Contained scrolling and min-width rules; no document overflow375/1440",
+    "implementation": "app/web/static/app.css",
+    "verification": "test_browser_showcase.py; visual-audit.md"
+  },
+  {
+    "id": "ui:F-02",
+    "source_handoff": "teamwork_explorer_survey_2/handoff.md",
+    "original_cells": [
+      "**F-02**",
+      "**CRITICAL**",
+      "`app/web/static/app.js:781-786` → `app/agents.py:578-599` → `verify.py:37-42`",
+      "**UI Counterfactual `\"focus_to_median\"` Corrupts Receipt (`TAMPERED`)**: Clicking \"Apply Flip Counterfactual\" on `reset_focus_to_median` in `#/audit` mutates `calendar.focus_comparison.value` without updating `queries` (`Q6.rows[0].focus_value`), `calendar.cells`, or `what_if.experiments`, and overwrites `RUNS[run_id]` (`app/api.py:242`). Subsequent downloads of `Receipt JSON` or `Audit ZIP` fail `python verify.py` with `TAMPERED: Q6 focus_value disagrees with calendar_summary.focus_comparison.value` (exit code `1`)."
+    ],
+    "disposition": "Median is explicit new metric scenario; queries/calendar/receipt rebuilt; observed input unchanged",
+    "implementation": "app/run_state.py; app/agents.py",
+    "verification": "test_analysis_workflows.py; test_browser_showcase.py"
+  },
+  {
+    "id": "ui:F-03",
+    "source_handoff": "teamwork_explorer_survey_2/handoff.md",
+    "original_cells": [
+      "**F-03**",
+      "**HIGH**",
+      "`app/web/static/app.js:173-186, 219-239` & `app/datasets.py:308, 356-390`",
+      "**Submitting `#query-form` Silently Destroys Active Preset AOIs**: Changing `Focus Year`, `Focus Month`, `Start/End Year`, or `Confidence` and clicking \"Analyze Region\" posts `{ lat, lon, radius_km, ... }` **without `aoi_id`**. `parse_custom_aoi` discards the preset (`AOI-AMZ` drought surge, `AOI-FLR` 94.9% gas flares) and synthesizes a generic `CUSTOM-xxxx` `NOMINAL_REGIME`, while `.preset-pill.active` remains highlighted!"
+    ],
+    "disposition": "Source-preserving option form uses retained snapshot; no accidental preset-to-custom conversion",
+    "implementation": "app/web/static/app.js",
+    "verification": "test_browser_showcase.py"
+  },
+  {
+    "id": "ui:F-04",
+    "source_handoff": "teamwork_explorer_survey_2/handoff.md",
+    "original_cells": [
+      "**F-04**",
+      "**HIGH**",
+      "`app/web/static/app.js:166-203, 279-304, 438-442, 508-523` & `app/agents.py:519-532, 603` & `app/datasets.py:311-364, 646`",
+      "**Drawn Custom Polygon & Uploaded CSV Geometry/Metadata Wiped on Any Toggle**: `run_data[\"aoi\"]` omits `\"geojson\"`, so any `runWhatIf` (`Mode`, `Flare Filter`, `Audience`, or calendar cell click) passes `run_state[\"aoi\"]` to `parse_custom_aoi`, which overwrites the drawn polygon or CSV bounds with `_square_ring(lat, lon, radius_km)` and resets `\"Uploaded FIRMS CSV\"` metadata. Furthermore, `submitDrawnPolygon` never updates `#in-lat`/`#in-lon`/`#in-radius`; `handleCsvUpload` ignores active `mode`/`flare_guard`/`confidence_min` and skips `#in-radius`/`#in-y0`/`#in-y1`; and `datasets.py:364, 646` uses Python `hash(...)` (salted per-process by `PYTHONHASHSEED`) instead of `sha256_of(...)` for `CUSTOM-xxxx` / `CSV-xxxx` `aoi_id`!"
+    ],
+    "disposition": "Full geometry and sources survive all experiments",
+    "implementation": "app/agents.py; app/run_state.py",
+    "verification": "test_analysis_workflows.py; test_browser_showcase.py"
+  },
+  {
+    "id": "ui:F-05",
+    "source_handoff": "teamwork_explorer_survey_2/handoff.md",
+    "original_cells": [
+      "**F-05**",
+      "**HIGH**",
+      "`app/web/static/app.js:60-64, 116-117, 287-289, 826-895` & `index.html:44, 102`",
+      "**Uncaught Promise Rejections & Invisible Error Banner**: `loadReceiptJson()` (`:826`), `loadManifesto()` (`:836`), and `runBenchSuite()` (`:873`) have **no `catch` handler**, throwing uncaught Promise rejections on HTTP/network errors. `#global-error` lives inside `#control-deck`, which is `hidden` on `#/manifesto` and `#/bench` (`:116`). `apiJSON` (`:62`) & `handleCsvUpload` (`:288-289`) format FastAPI 422 array `detail` as `\"[object Object]\"`, and `handleCsvUpload` lacks `.json().catch(...)`."
+    ],
+    "disposition": "Caught request errors, global live alert/retry on all views and readable validation details",
+    "implementation": "app/web/static/app.js; app/web/static/index.html",
+    "verification": "test_browser_showcase.py"
+  },
+  {
+    "id": "ui:F-06",
+    "source_handoff": "teamwork_explorer_survey_2/handoff.md",
+    "original_cells": [
+      "**F-06**",
+      "**HIGH**",
+      "`app/web/static/app.js:98-101, 194-203, 219-277, 306-312` & `app/api.py:242`",
+      "**Concurrent Fetch Race Conditions & Shared `run_id` Mutation**: No `AbortController` or request sequence guard across `runAnalyze`, `loadPasses`, `runWhatIf`, and `handleCsvUpload`. Rapid clicks on AOI presets, double-clicking Mode/Flare switches, or clicking calendar cells resolve out of order and desynchronize UI controls from `state.run`. Also `apply_what_if` mutates `RUNS[run_id]` in place under the old deterministic `run_id`, causing cross-tab collisions."
+    ],
+    "disposition": "AbortController plus revision guard; immutable server snapshots; stored schedule",
+    "implementation": "app/web/static/app.js; app/run_store.py",
+    "verification": "test_browser_showcase.py; test_run_store.py"
+  },
+  {
+    "id": "ui:F-07",
+    "source_handoff": "teamwork_explorer_survey_2/handoff.md",
+    "original_cells": [
+      "**F-07**",
+      "**HIGH**",
+      "`app/web/static/app.js:78-79` & `app/web/static/app.css:21, 101`",
+      "**WCAG AA Contrast Failures (`2.39:1`–`2.80:1` on Calendar Ramps; `4.25:1` on `.btn-go:hover`)**: `interpColor` computes luminance on gamma-encoded 8-bit sRGB (`> 142`) rather than WCAG 2.1 linearized relative luminance, failing AA across all 4 color ramps (contradicting `docs/SUBMISSION.md:22`)."
+    ],
+    "disposition": "Linear-sRGB foreground choice and token contrast; all four actual cell ramps >=4.5:1",
+    "implementation": "app/web/static/js/theme.js; design-tokens.json",
+    "verification": "test_design_tokens.py; test_browser_showcase.py"
+  },
+  {
+    "id": "ui:F-08",
+    "source_handoff": "teamwork_explorer_survey_2/handoff.md",
+    "original_cells": [
+      "**F-08**",
+      "**HIGH**",
+      "`app/web/static/app.js:415-484, 541-603, 618-665, 713-739` & `index.html:102, 169, 194, 370`",
+      "**Keyboard, Touch & Screen-Reader Accessibility Gaps**: All 324 `.cal-cell` elements are plain `<td>`s without `<button>`/`tabindex`/`keydown`/`focus`/`aria-selected` or `<th scope>`; all 4 `<svg>` charts lack `role=\"img\"`/`aria-label`, keyboard focus, and mobile tap tooltips; `Escape` does not cancel polygon draw mode; `#global-error` lacks `role=\"alert\"` and status readouts lack `aria-live=\"polite\"`; `.cal-cell` (`24px`), `.btn-sm` (`32px`), `.switch-pill` (`32px`), `.preset-pill` (`33px`) miss `40px–44px` touch hit-area guidelines."
+    ],
+    "disposition": "Native44px roving calendar buttons, text/table alternatives, live regions, keyboard Escape, GeoJSON drawing alternative",
+    "implementation": "app/web/static/js/charts.js; app/web/static/index.html; app/web/static/app.js",
+    "verification": "test_browser_showcase.py; visual-audit.md (no AT certification)"
+  },
+  {
+    "id": "ui:F-09",
+    "source_handoff": "teamwork_explorer_survey_2/handoff.md",
+    "original_cells": [
+      "**F-09**",
+      "**MEDIUM**",
+      "`app/web/static/app.js:161-164, 395-408, 471, 650, 730-731`",
+      "**Disconnected Ramp Legend in 36-Dekad View & Hardcoded Chart Colors**: In `36-Dekad Profile`, `#ramp-legend` displays the active Viridis/Cividis/Diverging bar directly above `renderDekadalChart()`, which ignores `state.ramp` and hardcodes `#D9622B` / `#9BE3B4`. Seasonal and Bridge SVGs also lack inline legends and axis unit titles."
+    ],
+    "disposition": "Shared ramp tokens; meaningful legends/units and chart text alternatives; no disconnected profile ramp",
+    "implementation": "app/web/static/js/charts.js; app/web/static/js/theme.js",
+    "verification": "test_browser_showcase.py; visual-audit.md"
+  },
+  {
+    "id": "ui:F-10",
+    "source_handoff": "teamwork_explorer_survey_2/handoff.md",
+    "original_cells": [
+      "**F-10**",
+      "**MEDIUM**",
+      "`index.html:73-99, 239-244`, `app.js:1-899`, `requirements.txt:1-10`",
+      "**UX, Validation, Modularity & Packaging Gaps**: (a) No drag-and-drop CSV upload zone; (b) 6 `<a download>` buttons have no `href` prior to first run load; (c) no client-side validation when `year_start >= year_end` or `focus_year` outside `[year_start, year_end]`; (d) `app.js` is 899 lines (`>800`-line maintainability ceiling); (e) `requirements.txt` omits `python-multipart` needed by `UploadFile = File(...)` in `app/api.py:199` (breaks `Dockerfile` / clean venv startup)."
+    ],
+    "disposition": "One-file drop zone with picker alternative, disabled pre-run exports, relational client/server validation, modular JS and multipart packaging",
+    "implementation": "app/web/static/app.js; app/web/static/index.html; requirements.txt",
+    "verification": "test_browser_showcase.py test_35; test_http_boundaries.py; fresh setup"
+  },
+  {
+    "id": "docs:D-01",
+    "source_handoff": "teamwork_spec_miner_survey_3/handoff.md",
+    "original_cells": [
+      "**D-01**",
+      "Setup & Packaging",
+      "`README.md:34-43, 105-114` jumps straight to `python judge.py`, `python run.py`, `python -m unittest discover -s tests -v`, `python smoke_test.py` with **zero setup/install instructions**.",
+      "Fresh checkout / current host Python lacks `fastapi` & `python-dotenv`; running `python -m unittest` or `python smoke_test.py` fails immediately with `ModuleNotFoundError: No module named 'fastapi'`. Violates Acceptance Criterion (`ORIGINAL_REQUEST.md:59`).",
+      "**CRITICAL**"
+    ],
+    "disposition": "Pinned minimal runtime plus dev browser dependency; stdlib unittest, multipart declared; fresh venv installed",
+    "implementation": "requirements.txt; requirements-dev.txt; README.md",
+    "verification": "fresh install and pip check; full suite; smoke_test.py"
+  },
+  {
+    "id": "docs:D-02",
+    "source_handoff": "teamwork_spec_miner_survey_3/handoff.md",
+    "original_cells": [
+      "**D-02**",
+      "Packaging Bug",
+      "`requirements.txt:1-9` & `Dockerfile:10` install dependencies for FastAPI including `POST /api/upload-csv` (`README.md:90`).",
+      "`app/api.py:200` uses `file: UploadFile = File(...)`, which requires `python-multipart` at import time (`RuntimeError: Form data requires \"python-multipart\" to be installed`), **but `python-multipart` is missing from `requirements.txt`!** Clean `pip install -r requirements.txt` or `docker build` fails to import `app.api`.",
+      "**CRITICAL**"
+    ],
+    "disposition": "Pinned minimal runtime plus dev browser dependency; stdlib unittest, multipart declared; fresh venv installed",
+    "implementation": "requirements.txt; requirements-dev.txt; README.md",
+    "verification": "fresh install and pip check; full suite; smoke_test.py"
+  },
+  {
+    "id": "docs:D-03",
+    "source_handoff": "teamwork_spec_miner_survey_3/handoff.md",
+    "original_cells": [
+      "**D-03**",
+      "Unused Dependencies",
+      "`requirements.txt:5-8` requires `requests>=2.32.0`, `numpy>=2.0.0`, `pandas>=2.2.0`, `cryptography>=42.0.0`.",
+      "Zero files in `d:\\NaSa-Space-Apps` import `requests`, `numpy`, `pandas`, or `cryptography` (hashing uses stdlib `hashlib` in `app/canonical.py:7`). Bloats install/Docker image unnecessarily unless used in upgrades.",
+      "**MEDIUM**"
+    ],
+    "disposition": "Pinned minimal runtime plus dev browser dependency; stdlib unittest, multipart declared; fresh venv installed",
+    "implementation": "requirements.txt; requirements-dev.txt; README.md",
+    "verification": "fresh install and pip check; full suite; smoke_test.py"
+  },
+  {
+    "id": "docs:D-04",
+    "source_handoff": "teamwork_spec_miner_survey_3/handoff.md",
+    "original_cells": [
+      "**D-04**",
+      "Dead Env Config",
+      "`.env.example:3-5` defines `SAMPLE_MODE=true` and `# FIRMS_MAP_KEY=your_nasa_firms_map_key_here` (\"Optional NASA Earthdata FIRMS API Key for live NRT pulls\").",
+      "Neither `SAMPLE_MODE` nor `FIRMS_MAP_KEY` is referenced anywhere in `app/` or `run.py` (only `PORT` is read at `run.py:25`). Live FIRMS NRT fetching is unimplemented.",
+      "**MEDIUM**"
+    ],
+    "disposition": "Removed unimplemented live-mode/API-key settings; PORT only",
+    "implementation": ".env.example; README.md",
+    "verification": "documentation review; fresh startup"
+  },
+  {
+    "id": "docs:D-05",
+    "source_handoff": "teamwork_spec_miner_survey_3/handoff.md",
+    "original_cells": [
+      "**D-05**",
+      "Missing Sample CSV",
+      "`README.md:46` (\"What You Can Try in 2 Minutes\") & `docs/SUBMISSION.md:21` instruct users to **upload a NASA FIRMS CSV file**.",
+      "`examples/` contains only three 6-line JSON payloads (`01_amazon_critical.json`, `02_mekong_harmonized.json`, `03_basra_flare_trap.json`) and **no sample `.csv` file** for judges to upload in the UI.",
+      "**HIGH**"
+    ],
+    "disposition": "Two invented CSVs served locally with provenance and mixed-quality example",
+    "implementation": "app/web/static/samples/; scripts/generate_examples.py",
+    "verification": "test_browser_showcase.py; generate_examples.py --check"
+  },
+  {
+    "id": "docs:D-06",
+    "source_handoff": "teamwork_spec_miner_survey_3/handoff.md",
+    "original_cells": [
+      "**D-06**",
+      "Unreferenced Examples",
+      "`examples/*.json` and `output_examples/*_receipt.json` exist in repo root (`ORIGINAL_REQUEST.md:39`).",
+      "Neither `README.md` nor `docs/*` mentions `examples/` or `output_examples/`, nor does `run.py` accept `--input examples/01_amazon_critical.json` or `--receipt-out`.",
+      "**MEDIUM**"
+    ],
+    "disposition": "JSON request examples and current receipts documented; supported explicit CLI flags instead of unimplemented --input alias",
+    "implementation": "README.md; examples/; output_examples/; run.py",
+    "verification": "test_cli.py; generate_examples.py --check; verify.py all3"
+  },
+  {
+    "id": "docs:D-07",
+    "source_handoff": "teamwork_spec_miner_survey_3/handoff.md",
+    "original_cells": [
+      "**D-07**",
+      "Undocumented Route",
+      "`README.md:81-100` HTTP API Reference table purports to list all HTTP endpoints.",
+      "`GET /runs/{run_id}` (`app/api.py:230-232`) is implemented in FastAPI but omitted from `README.md:81-100`.",
+      "**MEDIUM**"
+    ],
+    "disposition": "Unknown preset gets explicit validation error; GET snapshot documented",
+    "implementation": "app/api.py; README.md",
+    "verification": "test_http_boundaries.py; test_documentation.py"
+  },
+  {
+    "id": "docs:D-08",
+    "source_handoff": "teamwork_spec_miner_survey_3/handoff.md",
+    "original_cells": [
+      "**D-08**",
+      "CLI Flag Gaps",
+      "`run.py:20-37` provides CLI execution (`python run.py --aoi AOI-AMZ`), while `examples/03_basra_flare_trap.json:5` uses `\"flare_guard\": true`.",
+      "`run.py:21-25` only supports `--aoi`, `--year`, `--month`, `--mode`, `--port`. It lacks `--flare-guard`/`--no-flare-guard`, `--confidence-min`, `--persona`, `--lat`/`--lon`/`--radius`, `--input`, or `--csv`. Also `if args.year:` / `if args.month:` (`run.py:30-33`) treats `0` as falsy instead of `is not None`.",
+      "**MEDIUM**"
+    ],
+    "disposition": "CLI supports CSV/GeoJSON/point/window/confidence/persona/guard/reference/output/receipt/package and strict zero validation",
+    "implementation": "run.py; README.md",
+    "verification": "test_cli.py"
+  },
+  {
+    "id": "docs:D-09",
+    "source_handoff": "teamwork_spec_miner_survey_3/handoff.md",
+    "original_cells": [
+      "**D-09**",
+      "Receipt Verification Hole (Tamper Bypass)",
+      "`README.md:27` & `verify.py:6-7` claim `verify.py` catches any forged receipt (`TAMPERED`, exit 1).",
+      "**Empirical proof**: `verify.py:61` checks `recomputed[\"verdict_sha256\"] != receipt.get(\"verdict_sha256\")` **without** checking `receipt[\"verdict\"] == recomputed[\"verdict\"]`, `receipt[\"deciding_rule\"] == recomputed[\"deciding_rule\"]`, or `receipt[\"findings\"]`! Editing top-level `\"verdict\": \"NOMINAL_REGIME\"`, `\"deciding_rule\": 4`, `\"findings\": []` while leaving `verdict_sha256` untouched returns **`VALID` (exit 0)**! Also `cells_sha256` (`app/receipt.py:56`) and `Q0`–`Q5`/`Q7`–`Q8` cross-checks against `aoi`/`audit`/`calendar_summary` are never verified.",
+      "**CRITICAL**"
+    ],
+    "disposition": "All nine required queries/counts/hashes and evidence/decision relationships verified; unsigned scope explicit",
+    "implementation": "app/evidence.py; verify.py",
+    "verification": "test_receipt_integrity.py"
+  },
+  {
+    "id": "docs:D-10",
+    "source_handoff": "teamwork_spec_miner_survey_3/handoff.md",
+    "original_cells": [
+      "**D-10**",
+      "Receipt False-Positive Tamper Bug #1",
+      "`verify.py:6` claims every valid receipt re-derives cleanly (`VALID`, exit 0).",
+      "**Empirical proof**: `verify.py:55` passes `\"cells\": []` into `decide(evidence)`, whereas `app/rules.py:145-150` (`early_season_onset`) inspects `calendar[\"cells\"]` for `prev_cell`! Running `AOI-AMZ` with `focus_year=2007, focus_month=11` produces a legitimate receipt via `build_receipt()` that **`verify.py` falsely rejects as `TAMPERED` (exit 1)**!",
+      "**CRITICAL**"
+    ],
+    "disposition": "V2 embeds full calendar; verifier rederives all rule context; v1 frozen with narrower scope",
+    "implementation": "app/receipt.py; verify.py",
+    "verification": "test_receipt_integrity.py"
+  },
+  {
+    "id": "docs:D-11",
+    "source_handoff": "teamwork_spec_miner_survey_3/handoff.md",
+    "original_cells": [
+      "**D-11**",
+      "Receipt False-Positive Tamper Bug #2",
+      "UI View 3 (`index.html:294-297`, `app.js:785`) lets users apply counterfactual `\"reset_focus_to_median\"` and then download `Receipt JSON` (`index.html:243`).",
+      "**Empirical proof**: `apply_what_if(..., \"focus_to_median\", True)` (`app/agents.py:578-599`) mutates `calendar.focus_comparison.value` to `hist_median` **without regenerating `queries` (`Q6`)**! Downloading `receipt.json` and running `verify.py` fails with **`TAMPERED: Q6 focus_value disagrees with calendar_summary.focus_comparison.value`**!",
+      "**CRITICAL**"
+    ],
+    "disposition": "Median is explicit new metric scenario; queries/calendar/receipt rebuilt; observed input unchanged",
+    "implementation": "app/run_state.py; app/agents.py",
+    "verification": "test_analysis_workflows.py; test_browser_showcase.py"
+  },
+  {
+    "id": "docs:D-12",
+    "source_handoff": "teamwork_spec_miner_survey_3/handoff.md",
+    "original_cells": [
+      "**D-12**",
+      "Drawn Polygon Destroyed on What-If",
+      "`README.md:46,91` & `docs/SUBMISSION.md:21` claim drawn custom polygons support live counterfactual What-If toggles (`mode`, `flare_guard`, `focus_period`, `persona`).",
+      "**Empirical proof**: `apply_what_if` (`app/agents.py:603`) builds `req = {**run_state[\"aoi\"], **opts}` which has `\"polygon\"` rather than `\"geojson\"`. `parse_custom_aoi` (`app/datasets.py:311-363`) ignores `\"polygon\"`, falls back to `_square_ring(lat, lon, radius_km)`, overwrites the user's drawn polygon into a 5-vertex square, alters `area_km2` and `aoi_id` (`CUSTOM-5581` → `CUSTOM-1115`), re-seeds RNG, and changes `verdict_sha256` even when merely switching `persona`! Same bug corrupts uploaded CSV `aoi` metadata on `what_if`.",
+      "**CRITICAL**"
+    ],
+    "disposition": "Full geometry and sources survive all experiments",
+    "implementation": "app/agents.py; app/run_state.py",
+    "verification": "test_analysis_workflows.py; test_browser_showcase.py"
+  },
+  {
+    "id": "docs:D-13",
+    "source_handoff": "teamwork_spec_miner_survey_3/handoff.md",
+    "original_cells": [
+      "**D-13**",
+      "Scientific Metric Bug (`night_share > 100%`)",
+      "`output_examples/03_basra_flare_trap_receipt.json:72, 608` & `app/schema_mapping.py:201` define `night_share` as nocturnal fraction ($0 \\dots 1$).",
+      "In `AOI-FLR` (Aug 2026), `night_share = 1.0015` (**`100.15%`**)! Caused by `app/calendar_engine.py:164,171` dividing unrounded `b[\"night_hhe\"]` (`0.7912`) by 2-decimal rounded `hhe_total` (`0.79`).",
+      "**HIGH**"
+    ],
+    "disposition": "Known D/N share computed from unrounded contributions and bounded by its denominator",
+    "implementation": "app/calendar_engine.py",
+    "verification": "test_science_contracts.py"
+  },
+  {
+    "id": "docs:D-14",
+    "source_handoff": "teamwork_spec_miner_survey_3/handoff.md",
+    "original_cells": [
+      "**D-14**",
+      "Contradictory Step-Jump Numbers (`AOI-MEK`)",
+      "`app/datasets.py:128` & `output_examples/02_mekong_harmonized_receipt.json:16` (shown in UI `#aoi-description` banner) state: `\"Unharmonized raw counts jump +380% after VIIRS launch in 2012\"`.",
+      "Actual `raw_step_jump_2012_pct` in `README.md:37`, KPI card (`app.js:355`), and `02_mekong_harmonized_receipt.json:534` is **`+275.0%`**, contradicting `+380%` on the exact same UI screen!",
+      "**HIGH**"
+    ],
+    "disposition": "Removed hardcoded historical percentage claims; descriptions explicitly generated, values calculated at runtime",
+    "implementation": "app/datasets.py; README.md",
+    "verification": "test_documentation.py; judge.py"
+  },
+  {
+    "id": "docs:D-15",
+    "source_handoff": "teamwork_spec_miner_survey_3/handoff.md",
+    "original_cells": [
+      "**D-15**",
+      "`AOI-CAL` Nocturnal Share Claim Drift",
+      "`README.md:74` claims `AOI-CAL` Aug 2026 has `\"56% night detections\"`.",
+      "`app/datasets.py:165` sets base `night_prob = 0.56`, but `app/datasets.py:466` multiplies by `1.25` during shock months (`shock = 2.60`), yielding actual runtime `night_share = 0.6949` (**`69.5%`** / `69%` in UI), not `56%`.",
+      "**MEDIUM**"
+    ],
+    "disposition": "Removed probability-as-observation and crown-fire claims; measured known D/N share shown",
+    "implementation": "README.md; app/datasets.py; docs/SCIENCE.md",
+    "verification": "test_science_contracts.py; judge.py"
+  },
+  {
+    "id": "docs:D-16",
+    "source_handoff": "teamwork_spec_miner_survey_3/handoff.md",
+    "original_cells": [
+      "**D-16**",
+      "Overlap Bridge $R^2$ Range Claim",
+      "`README.md:24` & `docs/ARCHITECTURE.md:33` claim `$R^2 = 0.96\\text{–}0.99$`; `docs/SUBMISSION.md:18` claims `$R^2 > 0.96$`.",
+      "True for the 5 vegetation AOIs (`0.961` to `0.993`), **but** `AOI-FLR` has `bridge_r2 = 0.0` (`03_basra_flare_trap_receipt.json:537`). Also `_pearson_r2(xs, kappa * ys)` (`app/harmonize.py:216-218`) is scale-invariant Pearson $r^2$, which is blind to multiplicative bias in $\\kappa$.",
+      "**MEDIUM**"
+    ],
+    "disposition": "Unique observation revisions, satellite family mean occupancy; R2 separate from efficiency/RMSE. Monthly half-blend is an explicit index convention, not physical equivalence",
+    "implementation": "app/observations.py; app/harmonize.py; docs/SCIENCE.md",
+    "verification": "test_science_contracts.py"
+  },
+  {
+    "id": "docs:D-17",
+    "source_handoff": "teamwork_spec_miner_survey_3/handoff.md",
+    "original_cells": [
+      "**D-17**",
+      "Overlap Window Year Range Drift",
+      "`docs/MAPPING_MANIFESTO.md:46` & `app/schema_mapping.py:224,226` specify overlap window **`2012–2025`**.",
+      "`app/harmonize.py:210`, `README.md:24,60`, and `docs/ARCHITECTURE.md:30-31` hardcode **`2012–2024`** (`2012 <= ym[0] <= 2024`).",
+      "**MEDIUM**"
+    ],
+    "disposition": "Multi-year persistence is only a descriptive flag; supplied types distinct; shared overlap docs2012-2024",
+    "implementation": "app/observations.py; app/harmonize.py; app/schema_manifest.py",
+    "verification": "test_science_contracts.py; test_documentation.py"
+  },
+  {
+    "id": "docs:D-18",
+    "source_handoff": "teamwork_spec_miner_survey_3/handoff.md",
+    "original_cells": [
+      "**D-18**",
+      "Dataset Year Range (`2000–2026`) Anomalies",
+      "`README.md:23,68` & `app/datasets.py:473-475` note Terra MODIS active fire began **Nov 2000** (`if yr == 2000 and mo < 11: pass`).",
+      "`app/datasets.py:535-553` (`elif not modis_emitted:`) immediately overrides lines `473-475` and emits synthetic Terra MODIS hotspots for **Jan–Oct 2000**! Meanwhile `app/calendar_engine.py:162` unconditionally marks `yr == 2026 and mo == 12` as `is_observed = False` even for uploaded CSVs containing Dec 2026 rows, and clamps uploaded CSV years to `2000..2026` (`calendar_engine.py:108-109`).",
+      "**HIGH**"
+    ],
+    "disposition": "Removed forced pre-2012 MODIS detection; availability and omission applied consistently",
+    "implementation": "app/datasets.py; app/satellites.py",
+    "verification": "test_science_contracts.py"
+  },
+  {
+    "id": "docs:D-19",
+    "source_handoff": "teamwork_spec_miner_survey_3/handoff.md",
+    "original_cells": [
+      "**D-19**",
+      "Formula Drift: Overpass Dedup Factor",
+      "`docs/ARCHITECTURE.md:29` & `docs/MAPPING_MANIFESTO.md:32` state FireTrace applies $\\text{dedup\\_factor} = 1 / N_{\\text{afternoon\\_sats}}$.",
+      "`app/harmonize.py:125,198` computes `dedup_factor` for display/export only — it is **never used** in computing `modis_w`, `viirs_w`, or `hhe` (`harmonize.py:135-143, 250-260`).",
+      "**MEDIUM**"
+    ],
+    "disposition": "Unique observation revisions, satellite family mean occupancy; R2 separate from efficiency/RMSE. Monthly half-blend is an explicit index convention, not physical equivalence",
+    "implementation": "app/observations.py; app/harmonize.py; docs/SCIENCE.md",
+    "verification": "test_science_contracts.py"
+  },
+  {
+    "id": "docs:D-20",
+    "source_handoff": "teamwork_spec_miner_survey_3/handoff.md",
+    "original_cells": [
+      "**D-20**",
+      "Formula Drift: Robust $Z$ & Trend Slope",
+      "`app/schema_mapping.py:203` documents `MAX(0.7413*hist_iqr, 0.5)`; `:217` documents `\"Theil-Sen / OLS slope ... (2000-2026)\"`.",
+      "`app/calendar_engine.py:176` actually computes `max(0.7413 * hist_iqr, max(0.5, 0.18 * hist_med))` (undocumented `0.18 * hist_med` floor); `:47-58, 233` computes **only OLS** over **`2000–2025`** (no Theil-Sen, excludes 2026).",
+      "**MEDIUM**"
+    ],
+    "disposition": "Full robust scale includes .18*median; separate OLS/Theil-Sen on complete years only",
+    "implementation": "app/stats.py; app/calendar_engine.py; app/schema_manifest.py",
+    "verification": "test_science_contracts.py; test_documentation.py"
+  },
+  {
+    "id": "docs:D-21",
+    "source_handoff": "teamwork_spec_miner_survey_3/handoff.md",
+    "original_cells": [
+      "**D-21**",
+      "Rule 2 / Rule 3 Threshold Gap",
+      "`docs/ARCHITECTURE.md:42-44` documents ordered monotonic severity tiers (`CRITICAL_ANOMALY` → `ELEVATED_WATCH` → `NOMINAL_REGIME`).",
+      "In `app/rules.py:83,120`, Rule 2 requires `val > p95 and z_rob >= 2.0`, while Rule 3 requires `1.0 <= z_rob < 2.0 or (val > p90 and z_rob >= 0.85)`. If a cell has `z_rob >= 2.0` and `val <= p90` (possible when IQR is narrow with 2 historical outlier years), **both Rule 2 and Rule 3 are skipped**, misclassifying a $Z \\ge 2.0$ surge as `NOMINAL_REGIME`! Also `out_of_season_ignition` (`rules.py:97`: `val > p95 and z_rob >= 2.2`) is a strict subset of line `83` (`val > p95 and z_rob >= 2.0`).",
+      "**HIGH**"
+    ],
+    "disposition": "High-Z gap closed; no unsupported crown-fire/continuous-burning inference",
+    "implementation": "app/rules.py",
+    "verification": "test_science_contracts.py"
+  },
+  {
+    "id": "docs:D-22",
+    "source_handoff": "teamwork_spec_miner_survey_3/handoff.md",
+    "original_cells": [
+      "**D-22**",
+      "WCAG AA Contrast Claim False",
+      "`docs/SUBMISSION.md:22` claims all 4 color ramps have `\"automatic WCAG contrast foreground text\"` (`app/web/static/app.js:78-79`).",
+      "**Empirical proof**: `app.js:78` uses non-linearized sRGB (`0.2126*r + 0.7152*g + 0.0722*b > 142`) with `#0A120D` / `#E7EEE9`. Every single ramp fails WCAG 2.1 AA (`4.5:1`): Viridis drops to **`2.55:1`**, Cividis **`2.80:1`**, YlOrRd **`2.45:1`**, Okabe-Ito Diverging **`2.39:1`**! Directly violates Acceptance Criterion (`ORIGINAL_REQUEST.md:56`).",
+      "**CRITICAL**"
+    ],
+    "disposition": "Linear-sRGB foreground choice and token contrast; all four actual cell ramps >=4.5:1",
+    "implementation": "app/web/static/js/theme.js; design-tokens.json",
+    "verification": "test_design_tokens.py; test_browser_showcase.py"
+  },
+  {
+    "id": "docs:D-23",
+    "source_handoff": "teamwork_spec_miner_survey_3/handoff.md",
+    "original_cells": [
+      "**D-23**",
+      "Unhandled HTTP 500 on Input Bounds",
+      "`app/api.py:189-195` wraps `run_investigation` catching only `ValueError` → HTTP 422.",
+      "Passing `focus_month: 13` (or `0`, or `focus_year: null`) triggers `IndexError` at `app/agents.py:436` (`MONTH_NAMES[focus_month - 1]`) or `TypeError` at `:406-409`, causing an **unhandled HTTP 500**!",
+      "**HIGH**"
+    ],
+    "disposition": "Typed strict analysis/what-if contracts and controlled errors",
+    "implementation": "app/models.py; app/api.py",
+    "verification": "test_http_boundaries.py; test_inputs_geometry.py"
+  },
+  {
+    "id": "docs:D-24",
+    "source_handoff": "teamwork_spec_miner_survey_3/handoff.md",
+    "original_cells": [
+      "**D-24**",
+      "Unified CSV Sensor Miscount (`Q1`/`Q2`)",
+      "`docs/MAPPING_MANIFESTO.md:6-13` & `tests/test_firetrace.py:173-176` pass combined MODIS+VIIRS CSVs with shared header `brightness,...,instrument`.",
+      "`app/agents.py:65` counts MODIS via `r.get(\"instrument\") == \"MODIS\" or \"brightness\" in r`. In any combined CSV where `\"brightness\"` is a column key, **every VIIRS row has `\"brightness\" in r == True`**, so `Q1` counts 100% of VIIRS rows as MODIS and `Q2` reports `0` VIIRS rows!",
+      "**HIGH**"
+    ],
+    "disposition": "Sensor query counts use normalized sensor values, not CSV header presence",
+    "implementation": "app/evidence.py",
+    "verification": "test_analysis_workflows.py; test_receipt_integrity.py"
+  },
+  {
+    "id": "docs:D-25",
+    "source_handoff": "teamwork_spec_miner_survey_3/handoff.md",
+    "original_cells": [
+      "**D-25**",
+      "Dead/Inverted `z_before` in What-If",
+      "`app/agents.py:371` emits `\"z_before\"` in `toggle_sensor_mode` counterfactual metadata.",
+      "Line `371` reads `med_cal[...] if False else alt_cal[\"focus_comparison\"][\"z_robust\"]` — dead `if False` branch AND returns `alt_cal` (`z_after`), not the current mode's `z_before`!",
+      "**LOW**"
+    ],
+    "disposition": "Before/after metrics computed from correct active/alternate calendars; removed dead branch",
+    "implementation": "app/agents.py",
+    "verification": "test_analysis_workflows.py"
+  },
+  {
+    "id": "docs:D-26",
+    "source_handoff": "teamwork_spec_miner_survey_3/handoff.md",
+    "original_cells": [
+      "**D-26**",
+      "`AOI-FLR` Persistent Cells & Volcano Type",
+      "`app/datasets.py:252` claims flares persist `\"at identical 1 km cells\"` (`flare_count = 9`), and `docs/ARCHITECTURE.md:35` labels `type != 0` as `STATIC_FLARE`.",
+      "`app/datasets.py:579-580` offsets VIIRS flare coords by `(+0.001, -0.001)`, pushing 3 of 9 flares across `G1K_` cell boundaries (`12` persistent cells in `Q5`, `03_basra_flare_trap_receipt.json:623`). Also `app/harmonize.py:106` classifies FIRMS `type=1` (active volcano) and `type=3` (offshore) as `STATIC_FLARE`.",
+      "**LOW**"
+    ],
+    "disposition": "Thermal types 1/2/3 distinct; persistence not industrial cause; no fixed persistent-cell count claim",
+    "implementation": "app/observations.py; docs/SCIENCE.md; app/datasets.py",
+    "verification": "test_science_contracts.py; test_documentation.py"
+  },
+  {
+    "id": "docs:F-01",
+    "source_handoff": "teamwork_spec_miner_survey_3/handoff.md",
+    "original_cells": [
+      "F-01",
+      "Schema & Ingestion (Existing + R1/R2)",
+      "3-Source FIRMS Schema Normalization",
+      "Maps `firms_modis_c61`, `firms_viirs_snpp`, `firms_viirs_noaa20_21` into unified intermediate hotspot records (`mir_bt_k`, `tir_bt_k`, `confidence_class`, `confidence_weight`, `cell_id`, `dekad`, `satellite`, `is_afternoon_train`).",
+      "Raw FIRMS row `dict` (`lat`/`latitude`, `lon`/`longitude`, `acq_date`, sensor fields)",
+      "Normalized hotspot `dict` (22 keys)",
+      "Raises `ValueError` on invalid lat/lon (`[-90,90]`, `[-180,180]`) or bad `acq_date` (`YYYY-MM-DD`)",
+      "`app/schema_mapping.py:25-391`, `docs/MAPPING_MANIFESTO.md:1-47`"
+    ],
+    "disposition": "No invented FRP/temperature; valid zero preserved; missing flags exported",
+    "implementation": "app/schema_mapping.py; app/observations.py",
+    "verification": "test_science_contracts.py; test_inputs_geometry.py"
+  },
+  {
+    "id": "docs:F-02",
+    "source_handoff": "teamwork_spec_miner_survey_3/handoff.md",
+    "original_cells": [
+      "F-02",
+      "Schema & Ingestion (Existing + R2)",
+      "Semantic Schema Mapping Manifesto API & View",
+      "Exposes machine-readable source schemas, 4 target table schemas (`harmonized_hotspots`, `burning_calendar_cells`, `fire_regime_summaries`, `sensor_calibration_audit`), and field-level mapping rationales.",
+      "`GET /api/schema-mapping` / UI `#/manifesto` tab",
+      "JSON `{source_schemas, target_schemas, manifesto}` & rendered cards/tables",
+      "HTTP 200 deterministic static schema",
+      "`app/api.py:182-185`, `app/web/static/app.js:836-870`"
+    ],
+    "disposition": "Shared source/target declarations with generated document and semantic API view",
+    "implementation": "app/schema_manifest.py; scripts/build_schema_docs.py",
+    "verification": "test_documentation.py; test_browser_showcase.py"
+  },
+  {
+    "id": "docs:F-03",
+    "source_handoff": "teamwork_spec_miner_survey_3/handoff.md",
+    "original_cells": [
+      "F-03",
+      "Spatial & Data Inputs (Existing + R1/R2)",
+      "6 Built-In Multi-Decadal Benchmark Fire Regimes",
+      "Deterministic 2000–2026 MODIS + VIIRS record generator for `AOI-AMZ`, `AOI-MEK`, `AOI-CAL`, `AOI-NSW`, `AOI-MIO`, `AOI-FLR` covering drought forest fire, smallholder crop burn step-jump, nocturnal crown fire, Southern Hemisphere summer, savanna regime, and industrial gas flare trap.",
+      "`aoi_id` + `year_start`..`year_end` (`2000..2026`)",
+      "Deterministic raw FIRMS MODIS & VIIRS rows + AOI metadata",
+      "Falls through to custom AOI parser if `aoi_id` unknown; must fix pre-Nov-2000 MODIS emission (`D-18`) and text claim drift (`D-14`, `D-15`, `D-26`)",
+      "`app/datasets.py:79-293, 398-596`, `README.md:68-78`"
+    ],
+    "disposition": "Six deterministic geographically named generated regimes retained, impossible dates removed and unsupported causal labels corrected",
+    "implementation": "app/datasets.py",
+    "verification": "test_firetrace.py; test_science_contracts.py; judge.py"
+  },
+  {
+    "id": "docs:F-04",
+    "source_handoff": "teamwork_spec_miner_survey_3/handoff.md",
+    "original_cells": [
+      "F-04",
+      "Spatial & Data Inputs (Existing + R1/R2/AC-2/AC-5)",
+      "Custom Lat/Lon/Radius & GeoJSON Polygon AOI Selection",
+      "Resolves user `lat`, `lon`, `radius_km` (`5..250 km`) or GeoJSON `Polygon` / `Point` / `Feature` / `FeatureCollection` (including interactive map polygon drawing) with ray-casting `point_in_polygon`, shoelace `polygon_area_km2`, and latitude-banded climatology weights.",
+      "`{lat, lon, radius_km}` or `{geojson, name}` via `POST /api/analyze` or UI form / Draw Polygon tool",
+      "Deterministic custom `AOI` dict + generated records; **MUST fix** deterministic `aoi_id` hashing & lossless `polygon` preservation across `what_if` (`D-12`)",
+      "Raises `ValueError` → HTTP 422 on invalid GeoJSON, `<4` ring coords, or out-of-bounds coordinates",
+      "`app/datasets.py:21-77, 305-391`, `app/web/static/app.js:494-603`"
+    ],
+    "disposition": "Strict bounded full geometry with holes/components; invalid rings rejected, observations remain in AOI",
+    "implementation": "app/geometry.py; app/datasets.py",
+    "verification": "test_inputs_geometry.py; test_science_contracts.py"
+  },
+  {
+    "id": "docs:F-05",
+    "source_handoff": "teamwork_spec_miner_survey_3/handoff.md",
+    "original_cells": [
+      "F-05",
+      "Spatial & Data Inputs (Existing + R1/R2/AC-5)",
+      "Raw NASA FIRMS CSV Upload & Auto-AOI Derivation",
+      "Accepts uploaded MODIS, VIIRS, or combined FIRMS `.csv` files (up to 25,000 rows, UTF-8/BOM), derives padded bounding polygon & default focus period, and runs full harmonization/calendar/receipt pipeline; needs bundled sample `.csv` in `examples/` (`D-05`) and `python-multipart` in `requirements.txt` (`D-02`).",
+      "`POST /api/upload-csv` (`multipart/form-data` `file` + query params `focus_year`, `focus_month`, `mode`, `flare_guard`, `confidence_min`, `persona`)",
+      "Full investigation JSON + cached `run_id`; **MUST fix** combined CSV `Q1`/`Q2` sensor counting (`D-24`) & Dec 2026 observation handling (`D-18`)",
+      "HTTP 422 on non-UTF8, empty CSV, missing header, or zero valid hotspot rows",
+      "`app/api.py:198-228`, `app/datasets.py:599-664`, `app/web/static/app.js:279-304`"
+    ],
+    "disposition": "Bounded mixed-sensor CSV with rejection diagnostics/aliases/latest focus and source-preserving UI options",
+    "implementation": "app/datasets.py; app/api.py",
+    "verification": "test_inputs_geometry.py; test_http_boundaries.py; test_browser_showcase.py"
+  },
+  {
+    "id": "docs:F-06",
+    "source_handoff": "teamwork_spec_miner_survey_3/handoff.md",
+    "original_cells": [
+      "F-06",
+      "Core Science (Existing + R1/R2/AC-5)",
+      "4-Stage MODIS & VIIRS Physical Harmonization (`app/harmonize.py`)",
+      "(1) Equal-area ~1 km sinusoidal grid clustering (`G1K_*`), (2) afternoon-train (`Aqua`, `S-NPP`, `NOAA-20`, `NOAA-21`) `(cell_id, acq_date, daynight)` deduplication, (3) overlap calibration factor $\\kappa$ bridging VIIRS 375 m to MODIS 1 km into **Harmonized Hotspot Equivalents (HHE)** and calibrated FRP (`hfre_mw`), and (4) stationary industrial flare/non-veg separation (`STATIC_FLARE`, `AGRICULTURAL_BURN`, `WILDFIRE`).",
+      "Raw FIRMS rows, `aoi`, `exclude_static_flares`, `confidence_min` (`low`\\",
+      "`nominal`\\",
+      "`high`)",
+      "`{hotspots, annual_sensor_breakdown, sensor_calibration_audit, persistent_flare_cells}`; reconcile `overpass_dedup_factor` usage (`D-19`), overlap year docs (`D-17`), and `bridge_r2` diagnostics (`D-16`)",
+      "Skips malformed individual rows (`skipped_invalid_rows` counter); defaults to `DEFAULT_KAPPA=0.58` if zero overlap months",
+      "`app/harmonize.py:1-340`, `docs/ARCHITECTURE.md:23-36`"
+    ],
+    "disposition": "Unique observation revisions, satellite family mean occupancy; R2 separate from efficiency/RMSE. Monthly half-blend is an explicit index convention, not physical equivalence",
+    "implementation": "app/observations.py; app/harmonize.py; docs/SCIENCE.md",
+    "verification": "test_science_contracts.py"
+  },
+  {
+    "id": "docs:F-07",
+    "source_handoff": "teamwork_spec_miner_survey_3/handoff.md",
+    "original_cells": [
+      "F-07",
+      "Core Science (Existing + R1/R2/AC-5)",
+      "2000–2026 Burning Activity Calendar & 2001–2020 Climatology Engine",
+      "Builds 27-year × 12-month heatmap matrix + 36-dekad (10-day) seasonal profile, non-parametric 2001–2020 baseline (`median`, `mean`, `q25`, `q75`, `iqr`, `p90`, `p95`), `anomaly_abs`, `anomaly_pct`, `z_robust`, `severity_band`, historical rank, peak months/year, and multi-decadal trend slopes (`harmonized` vs `raw`).",
+      "`harmonized_data`, `aoi`, `year_start`, `year_end`, `focus_year`, `focus_month`, `mode` (`harmonized`\\",
+      "`raw`)",
+      "Calendar `dict` (`cells`, `climatology`, `annual_series`, `dekadal_profile`, `focus_comparison`, `summary_records`); **MUST fix** `night_share > 1.0` rounding bug (`D-13`) and align Z/Theil-Sen formulas with docs (`D-20`)",
+      "Clamps year range & falls back to available baseline years when uploaded CSV has `<3` years in `2001..2020`",
+      "`app/calendar_engine.py:1-329`, `docs/SUBMISSION.md:19-20`"
+    ],
+    "disposition": "Monthly2000-2026 and36-dekad profiles, same-month reference, empirical percentile, complete-year OLS/Theil-Sen and cyclic90% season; explicit coverage",
+    "implementation": "app/calendar_engine.py; app/stats.py",
+    "verification": "test_science_contracts.py; test_browser_showcase.py"
+  },
+  {
+    "id": "docs:F-08",
+    "source_handoff": "teamwork_spec_miner_survey_3/handoff.md",
+    "original_cells": [
+      "F-08",
+      "Deterministic Rules & Agents (Existing + R1/R2/AC-2)",
+      "Deterministic 4-Tier Verdict Engine & Canonical SHA-256 Seal",
+      "Pure-code ordered rule engine (`Rule 1 UNVERIFIABLE`, `Rule 2 CRITICAL_ANOMALY`, `Rule 3 ELEVATED_WATCH`, `Rule 4 NOMINAL_REGIME`) producing sorted `Finding` records and canonical `verdict_sha256` (`DECIMALS=6`, `-0.0 -> 0.0`, sorted keys, no timestamps).",
+      "`evidence` `{aoi, calendar, sensor_calibration_audit, options}`",
+      "`{verdict, deciding_rule, rules_version, findings, verdict_sha256}`; **MUST fix** $Z \\ge 2.0, \\text{val} \\le P90$ Rule 2/3 gap (`D-21`) and `refs` list serialization",
+      "Rule 1 returns `UNVERIFIABLE` on invalid coordinates, `<5` baseline years, or `>50%` static flare contamination (when `flare_guard=True`); `canonical.py` raises `ValueError` on `NaN`/`Inf`",
+      "`app/rules.py:1-215`, `app/canonical.py:1-45`"
+    ],
+    "disposition": "All nine required queries/counts/hashes and evidence/decision relationships verified; unsigned scope explicit",
+    "implementation": "app/evidence.py; verify.py",
+    "verification": "test_receipt_integrity.py"
+  },
+  {
+    "id": "docs:F-09",
+    "source_handoff": "teamwork_spec_miner_survey_3/handoff.md",
+    "original_cells": [
+      "F-09",
+      "Deterministic Rules & Agents (Existing + R1/R2/AC-5)",
+      "5-Agent Explainable Pipeline, 4 Adversarial Refutations, Audience Lenses & Live What-If Lab",
+      "Runs `Extractor → Planner → Investigator → Evaluator → Writer`, generates `Q0`–`Q8` hashed query tables, runs refutations `R1`–`R4` (sensor switch, afternoon double-count, bow-tie footprint, static flare trap), generates 4 audience briefings (`responder`, `scientist`, `land_manager`, `firefighter`), and evaluates/applies counterfactual flips (`mode`, `flare_guard`, `focus_period`, `focus_to_median`, `confidence_min`, `persona`).",
+      "Investigation request `dict` (`POST /api/analyze`, `POST /run`, `run.py --aoi`) or `POST /runs/{run_id}/what_if`",
+      "Complete run payload + 64-run LRU memory store (`GET /runs/{run_id}`); **MUST fix** `focus_month` validation (`D-23`), `focus_to_median` `Q6` sync (`D-11`), and `z_before` (`D-25`)",
+      "Must return HTTP 422 on all invalid parameter types/ranges (`ValueError`/`TypeError`), HTTP 404 on unknown `run_id`",
+      "`app/agents.py:1-616`, `app/api.py:139-244`"
+    ],
+    "disposition": "Five ordinary deterministic stages, Q0-Q8, four bounded diagnostics, four audience lenses, immutable what-if scenarios",
+    "implementation": "app/agents.py; app/evidence.py",
+    "verification": "test_analysis_workflows.py; test_browser_showcase.py"
+  },
+  {
+    "id": "docs:F-10",
+    "source_handoff": "teamwork_spec_miner_survey_3/handoff.md",
+    "original_cells": [
+      "F-10",
+      "Orbital & Exports (Existing + R2/AC-5)",
+      "Sun-Synchronous MODIS & VIIRS Overpass Predictor",
+      "Predicts geometric DAY/NIGHT overpasses over `1..16` days for `Terra`, `Aqua`, `Suomi NPP`, `NOAA-20`, `NOAA-21` using swath width (`2330 km` vs `3060 km`), altitude, LST crossing times, off-nadir distance, viewing zenith, and max elevation.",
+      "`GET /api/passes?aoi_id=...` or `?lat=...&lon=...&days=1..16`, or `predict_passes(lat, lon, days, start_dt)`",
+      "`{lat, lon, window_days, satellites_tracked, pass_count, passes, note}`",
+      "Raises `ValueError` → HTTP 422 if `aoi_id` and `lat`/`lon` missing or out of bounds, or `days` outside `1..16`",
+      "`app/geo_passes.py:1-156`, `app/api.py:304-321`"
+    ],
+    "disposition": "Spherical viewing geometry, bounded schematic nominal solar phase; footprint metadata/defaults explicit. No ephemeris or bow-tie correction claimed",
+    "implementation": "app/geo_passes.py; app/satellites.py; docs/EXPORTS.md",
+    "verification": "test_exports_passes.py; test_science_contracts.py"
+  },
+  {
+    "id": "docs:F-11",
+    "source_handoff": "teamwork_spec_miner_survey_3/handoff.md",
+    "original_cells": [
+      "F-11",
+      "Orbital & Exports (Existing + R2/AC-5)",
+      "Multi-Format Analytics & Tactical Exports (`.csv`, `.geojson`, `.ics`, `receipt.json`, Audit `.zip`)",
+      "Generates Harmonized Hotspots CSV, 2000–2026 Burning Calendar CSV, AOI + Hotspots GeoJSON `FeatureCollection`, RFC 5545 `.ics` (next 10 satellite passes + 2027 peak fire watch windows), self-contained `receipt.json`, and deflated Audit Package `.zip` (with `evidence.json`, `receipt.json`, CSVs, GeoJSON, ICS, `MAPPING_MANIFESTO.md`).",
+      "`GET /api/export/{run_id}/{hotspots.csv,calendar.csv,hotspots.geojson,calendar.ics}`, `GET /runs/{run_id}/{receipt,package}`",
+      "Properly typed HTTP attachments (`text/csv`, `application/geo+json`/`application/json`, `text/calendar`, `application/zip`)",
+      "HTTP 404 if `run_id` not found",
+      "`app/exports.py:1-152`, `app/receipt.py:27-82`, `app/api.py:246-302`"
+    ],
+    "disposition": "Complete retained events by default, explicit inclusion/missing flags; labeled optional previews only",
+    "implementation": "app/exports.py",
+    "verification": "test_exports_passes.py; test_browser_showcase.py"
+  },
+  {
+    "id": "docs:F-12",
+    "source_handoff": "teamwork_spec_miner_survey_3/handoff.md",
+    "original_cells": [
+      "F-12",
+      "Cryptographic Audit & Verification (Existing + R1/R4/AC-2/AC-4)",
+      "Offline Cryptographic Receipt Verifier (`verify.py`) & Judge Suite (`judge.py`) & Trap Bench (`/api/bench`)",
+      "Standalone offline CLI & library verifier (`verify.py`), 7-claim offline judge suite (`judge.py`), smoke test (`smoke_test.py`), and 12-case HTTP/UI Trap Benchmark (`POST /api/bench`, `TC-01`..`TC-12`).",
+      "`python verify.py <receipt.json>`, `python judge.py`, `python smoke_test.py`, `POST /api/bench`",
+      "Exit `0` (`VALID`/all pass), `1` (`TAMPERED`/fail), `2` (`UNREADABLE`); **MUST fix** `verify.py` top-level verdict tamper hole (`D-09`) & `early_season_onset` false-tamper (`D-10`) and expand suites per `R4`",
+      "Non-zero exit code on any tampered field, rule hash mismatch, query hash mismatch, or unreadable receipt",
+      "`verify.py:1-102`, `judge.py:1-147`, `smoke_test.py:1-54`, `app/api.py:36-129, 323-349`"
+    ],
+    "disposition": "V2 consistency verifier, v1 narrower scope, seven demo checks, smoke and12fixture bench",
+    "implementation": "verify.py; judge.py; smoke_test.py; app/api.py",
+    "verification": "test_receipt_integrity.py; judge7/7; smoke3/3; bench12/12"
+  },
+  {
+    "id": "docs:F-13",
+    "source_handoff": "teamwork_spec_miner_survey_3/handoff.md",
+    "original_cells": [
+      "F-13",
+      "Design System & Liquid Glass UI (New/Upgrade — R3/AC-6/AC-7/AC-8)",
+      "Structured Design-System Tokens & Web Liquid Glass Visual Architecture",
+      "Cohesive CSS custom-property token architecture covering color semantics, translucent layered Liquid Glass surface elevation tiers (`backdrop-filter: blur(...)`, specular edge highlights, ambient depth shadows), typography scale (Geist Sans & Geist Mono), spacing, border radii, and fluid motion transitions (with `prefers-reduced-motion` support) across all 5 primary views (`#/`, `#/bridge`, `#/audit`, `#/manifesto`, `#/bench`).",
+      "Browser rendering at desktop (`1440px`) & mobile (`375px`) viewports across all tabs and controls",
+      "Zero horizontal overflow (`scrollWidth <= clientWidth`), zero JS/HTTP errors, WCAG 2.1 AA contrast ($\\ge 4.5:1$) across **Viridis**, **Cividis**, **YlOrRd**, and **Okabe-Ito Diverging**, passing independent 4-dimension showcase rubric (`AC-8`)",
+      "Graceful fallback if `backdrop-filter` unsupported; accessible error banner (`#global-error`) for API 422s",
+      "`ORIGINAL_REQUEST.md:26-28, 53-57`, `app/web/static/{index.html,app.css,app.js}`"
+    ],
+    "disposition": "Semantic JSON/CSS tokens, generated interactive preview, restrained glass and opaque charts, reduced motion/transparency/forced color fallbacks",
+    "implementation": "design-tokens.json; DESIGN.md; design-preview.html; app/web/static/",
+    "verification": "test_design_tokens.py; test_browser_showcase.py; independent visual audit88/100"
+  },
+  {
+    "id": "docs:F-14",
+    "source_handoff": "teamwork_spec_miner_survey_3/handoff.md",
+    "original_cells": [
+      "F-14",
+      "Documentation & Reproducibility (Upgrade — R4/AC-9/AC-10)",
+      "End-to-End Setup, CLI, Architecture & NASA Space Apps Submission Docs",
+      "Complete, accurate `README.md` and `docs/{SUBMISSION.md, ARCHITECTURE.md, MAPPING_MANIFESTO.md}`, synchronized `requirements.txt` / `.env.example` / `Dockerfile`, bundled `examples/*.csv` + `examples/*.json`, and regenerated `output_examples/*_receipt.json`.",
+      "User/judge following `README.md` commands from scratch",
+      "Clean install, server launch, CLI runs, and all test/judge/verify suites succeed with zero undocumented steps and zero broken relative links",
+      "N/A",
+      "`ORIGINAL_REQUEST.md:29-31, 58-60`, `README.md`, `docs/*`"
+    ],
+    "disposition": "Documented clean Python3.11 setup, accurate schema/routes/CLI/limitations and short judging walkthrough; sample paths intentionally served from static directory",
+    "implementation": "README.md; docs/; requirements*.txt; .env.example; Dockerfile",
+    "verification": "fresh install, full tests, artifact checks; Docker build unverified (tool unavailable)"
+  }
+]

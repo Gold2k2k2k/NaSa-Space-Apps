@@ -192,18 +192,18 @@ elevation, motion, and breakpoint decisions.
   links and referenced artifacts against the actual repository.
 - [x] Extend meaningful smoke/judge checks to cover corrected workflows rather
   than merely asserting that outputs are non-empty.
-- [ ] Follow README commands in a fresh environment and run all documented suites.
+- [x] Follow README commands in a fresh environment and run all documented suites.
 
 ## Task 9: Independent review and requirement-by-requirement completion audit
 
 **Files:** review fixes as needed; final evidence in `docs/verification/`.
 
-- [ ] Run the complete unit, HTTP, smoke, judge, verifier, determinism, and browser
+- [x] Run the complete unit, HTTP, smoke, judge, verifier, determinism, and browser
   suites; record command, revision, environment, and outputs.
-- [ ] Have independent Standards and Spec reviewers inspect the complete change
+- [x] Have independent Standards and Spec reviewers inspect the complete change
   from `a7b7ec9`, and an independent visual evaluator inspect every primary view.
-- [ ] Resolve findings and rerun the checks affected by each fix.
-- [ ] Map each approved design/recovered R1–R4 requirement and survey item to its
+- [x] Resolve findings and rerun the checks affected by each fix.
+- [x] Map each approved design/recovered R1–R4 requirement and survey item to its
   implementation and authoritative evidence. Report unsupported environmental
   checks as unverified; do not claim complete until all required work is proved.
 
