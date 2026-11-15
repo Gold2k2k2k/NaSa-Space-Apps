@@ -1,9 +1,14 @@
 """FireTrace HTTP API: Harmonized MODIS & VIIRS Burning Activity Calendar & Verifier."""
 from __future__ import annotations
 
-from pathlib import Path
-from typing import Any, Literal, Optional
 from datetime import datetime
+import os
+from pathlib import Path
+import pickle
+import re
+import tempfile
+from typing import Any, Literal, Optional
+import zlib
 
 from fastapi import Body, FastAPI, File, HTTPException, Query, Response, UploadFile
 from fastapi.responses import FileResponse, JSONResponse
@@ -146,6 +151,17 @@ async def request_validation_error(request, error):
     return JSONResponse({"detail": detail}, status_code=422)
 
 
+_RUN_ID_RE = re.compile(r"^ft-[0-9a-f]{24}$")
+
+
+def _serverless_cache_dir() -> Optional[Path]:
+    if os.environ.get("VERCEL") == "1" or os.environ.get("FIRETRACE_SERVERLESS") == "1":
+        target = Path(tempfile.gettempdir()) / "firetrace-runs"
+        target.mkdir(parents=True, exist_ok=True)
+        return target
+    return None
+
+
 def _store_run(run_data: dict[str, Any]) -> None:
     try:
         RUNS.put(run_data)
@@ -153,6 +169,14 @@ def _store_run(run_data: dict[str, Any]) -> None:
         raise HTTPException(409, str(error)) from error
     except SnapshotLimit as error:
         raise HTTPException(413, str(error)) from error
+    cache_dir = _serverless_cache_dir()
+    run_id = run_data.get("run_id", "")
+    if cache_dir is not None and _RUN_ID_RE.match(run_id):
+        try:
+            blob = zlib.compress(pickle.dumps(run_data, protocol=pickle.HIGHEST_PROTOCOL), level=1)
+            (cache_dir / f"{run_id}.bin").write_bytes(blob)
+        except OSError:
+            pass
 
 
 def _public_run(run_data: dict[str, Any]) -> dict[str, Any]:
@@ -161,9 +185,19 @@ def _public_run(run_data: dict[str, Any]) -> dict[str, Any]:
 
 def _get_run_or_404(run_id: str) -> dict[str, Any]:
     found = RUNS.get(run_id)
-    if found is None:
-        raise HTTPException(status_code=404, detail=f"Run {run_id!r} not found in memory")
-    return found
+    if found is not None:
+        return found
+    cache_dir = _serverless_cache_dir()
+    if cache_dir is not None and _RUN_ID_RE.match(run_id):
+        cache_file = cache_dir / f"{run_id}.bin"
+        if cache_file.is_file():
+            try:
+                restored = pickle.loads(zlib.decompress(cache_file.read_bytes()))
+                RUNS.put(restored)
+                return RUNS.get(run_id) or restored
+            except Exception:
+                pass
+    raise HTTPException(status_code=404, detail=f"Run {run_id!r} not found in memory")
 
 
 @app.get("/health")

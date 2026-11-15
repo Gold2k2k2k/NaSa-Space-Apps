@@ -1,0 +1,15 @@
+.git
+.venv
+venv
+__pycache__
+.pytest_cache
+.superpowers
+logs
+tests
+output_examples
+examples
+scripts
+design-preview.html
+design-preview.template.html
+CCC
+Ff
