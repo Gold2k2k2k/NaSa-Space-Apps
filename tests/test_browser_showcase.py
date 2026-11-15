@@ -266,6 +266,11 @@ class TestBrowserShowcase(unittest.TestCase):
         self.open()
         uploaded = self.action(lambda: self.page.locator("#csv-file-input").set_input_files(
             {"name": "mixed.csv", "mimeType": "text/csv", "buffer": CSV.encode()}), "/api/upload-csv")
+        self.page.locator("#tab-bridge").click()
+        self.page.locator("#model-assessment").evaluate("element => element.open = true")
+        self.assertIn("assumed identity", self.page.locator("#model-policy-note").inner_text().lower())
+        self.assertIn("positive matched training windows", self.page.locator("#model-policy-note").inner_text())
+        self.page.locator("#tab-calendar").click()
         self.assertIn("Uploaded CSV", self.page.locator("#source-badge").inner_text())
         self.assertIn("rejected 1", self.page.locator("#data-note").inner_text())
         original_geometry = uploaded["aoi"]["geometry"]

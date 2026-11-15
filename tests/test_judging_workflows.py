@@ -57,6 +57,8 @@ class TestJudgingWorkflows(unittest.TestCase):
         self.assertEqual(check_receipt(receipt)["status"], "VALID")
         for mutate in (lambda r: r["source_manifest"]["bbox"].__setitem__(0, 0),
                        lambda r: r["manager_brief"]["comparison"].__setitem__("status", "CRITICAL_ANOMALY"),
+                       lambda r: r["sensor_calibration_audit"]["model_evaluation"]["training"]["power"].__setitem__("pairs", 999999),
+                       lambda r: r["sensor_calibration_audit"]["model_evaluation"]["held_out"]["occupancy"]["agreement"].__setitem__("sample_count", 999999),
                        lambda r: r["sensor_calibration_audit"]["model_evaluation"].__setitem__("applied_kappa", 99)):
             forged = copy.deepcopy(receipt)
             mutate(forged)

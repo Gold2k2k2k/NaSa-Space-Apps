@@ -49,6 +49,21 @@ def _model_source_problems(receipt):
                 or model.get("training_month_pairs") != audit.get("overlap_months_count")
                 or model.get("training_power_pairs") != audit.get("matched_frp_windows")):
             problems.append("applied model disagrees with audit factors/counts")
+        for period in ("training", "held_out"):
+            assessment = evaluation.get(period)
+            if not isinstance(assessment, dict):
+                raise ValueError("Each model assessment must be an object")
+            for quantity, training_count in (("occupancy", "training_month_pairs"), ("power", "training_power_pairs")):
+                item = assessment.get(quantity)
+                if not isinstance(item, dict) or not isinstance(item.get("agreement"), dict):
+                    raise ValueError("Each assessment quantity requires agreement evidence")
+                count = item.get("pairs")
+                if type(count) is not int or count < 0:
+                    raise ValueError("Assessment pair counts must be non-negative integers")
+                if type(item["agreement"].get("sample_count")) is not int or item["agreement"]["sample_count"] != count:
+                    problems.append(f"{period}.{quantity} pairs disagree with agreement sample count")
+                if period == "training" and count != model.get(training_count):
+                    problems.append(f"training.{quantity} pairs disagree with fitted model support")
         profile = model.get("filter_profile", {})
         if profile != {"confidence_min": receipt["options"]["confidence_min"], "exclude_static_flares": receipt["options"]["flare_guard"]}:
             problems.append("model filter profile differs from analysis options")

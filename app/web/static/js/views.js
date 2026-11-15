@@ -87,8 +87,11 @@ export function renderBridge(run) {
     ". Era ratios are diagnostics only. FRP conversion: " + fmt(audit.frp_conversion_ratio, 3) + " (" + audit.frp_calibration_basis.replaceAll("_", " ") + ").";
   const model = audit.calibration_model, evaluation = audit.model_evaluation;
   const years = (value) => value ? value.join("–") : "none";
-  $("model-policy-note").textContent = "Fit: " + years(model.policy.training_years) + "; held-out: " + years(model.policy.evaluation_years) +
-    ". κ " + fmt(model.kappa, 5) + "; independently fitted FRP factor " + fmt(model.frp_ratio, 5) + ". " + model.model_id + ". Filters refit training data only.";
+  const powerBasis = model.frp_basis === "matched_window_sum_ratio" ? "independently fitted FRP factor" : "assumed identity FRP factor";
+  const occupancyBasis = model.occupancy_basis === "empirical_monthly_sum_ratio" ? "fitted" : "assumed demo multiplier";
+  $("model-policy-note").textContent = "Training interval: " + years(model.policy.training_years) + "; held-out: " + years(model.policy.evaluation_years) +
+    ". κ " + fmt(model.kappa, 5) + " (" + occupancyBasis + "; " + model.training_month_pairs + " positive training month pairs); " +
+    powerBasis + " " + fmt(model.frp_ratio, 5) + " (" + model.training_power_pairs + " positive matched training windows). " + model.model_id + ". Filters refit training data only.";
   const assessmentRows = [];
   for (const [key, label] of [["training", "Training"], ["held_out", "Held-out"]]) {
     for (const [quantity, unitLabel] of [["occupancy", "occupancy index"], ["power", "power MW"]]) {

@@ -22,7 +22,7 @@ def package_submission(output: Path) -> dict:
     for name in sorted(set(tracked) - {""}):
         path = PurePosixPath(name)
         if (path.is_absolute() or ".." in path.parts or any(p in forbidden for p in path.parts)
-                or any(p.startswith(".") and p not in {".gitignore", ".dockerignore", ".env.example"} for p in path.parts)
+                or any(p.startswith(".") and p not in {".gitignore", ".gitattributes", ".dockerignore", ".env.example"} for p in path.parts)
                 or path.suffix.lower() in {".pem", ".key", ".p12", ".pfx", ".log", ".pyc"}):
             continue
         source = root.joinpath(*path.parts)

@@ -5,6 +5,8 @@ import io
 import json
 from pathlib import Path
 import tempfile
+import shutil
+import subprocess
 import unittest
 from unittest.mock import patch
 
@@ -13,6 +15,34 @@ DATA = ROOT / "app" / "data"
 
 
 class TestJudgingCaseData(unittest.TestCase):
+    def test_crlf_git_checkout_can_load_the_pinned_case(self):
+        from app import case_studies
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            destination = root / "app" / "data"
+            destination.mkdir(parents=True)
+            names = ["central-highlands.csv", "central-highlands.manifest.json"]
+            for name in names:
+                shutil.copyfile(DATA / name, destination / name)
+            if (ROOT / ".gitattributes").is_file():
+                shutil.copyfile(ROOT / ".gitattributes", root / ".gitattributes")
+            def git(*args):
+                subprocess.run(["git", "-c", f"safe.directory={root.as_posix()}", "-C", str(root), *args],
+                               check=True, capture_output=True)
+            git("init", "-q")
+            git("config", "core.autocrlf", "true")
+            git("add", ".")
+            for name in names:
+                (destination / name).unlink()
+            git("checkout-index", "--all", "--force")
+            try:
+                with patch.object(case_studies, "DATA_DIR", destination):
+                    rows, aoi = case_studies.load_case_study("central-highlands")
+            except ValueError as error:
+                self.fail(f"Fresh Windows-style checkout must retain pinned bytes: {error}")
+            self.assertEqual(len(rows), 16258)
+            self.assertEqual(aoi["subset_sha256"], "5d28887cfc0e10d29facb805147b6743ca3353d30b496e3d21a59579f4380ef0")
+
     def test_committed_judging_results_match_the_verifiable_receipt(self):
         receipt_path = ROOT / "output_examples" / "central_highlands_receipt.json"
         self.assertTrue(receipt_path.is_file(), "A reproducible real-case example is missing")
