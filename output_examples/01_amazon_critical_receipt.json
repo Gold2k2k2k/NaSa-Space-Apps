@@ -1,6 +1,6 @@
 {
   "receipt_version": "firetrace-receipt-v2",
-  "run_id": "ft-77cb236fed25fc5cd5c5c53a",
+  "run_id": "ft-30c071f2d6c4b194d8c75bb8",
   "rules_version": "2026-11-15.3",
   "rules_sha256": "b5a46d2f062d05eecd0586238d457166c9636b2f661ee45b0d71b952fc4f2eb8",
   "aoi": {
@@ -13210,10 +13210,10 @@
   "verification_scope": "Unsigned reproducibility and internal evidence consistency; not source authentication.",
   "reference_time": "2026-11-14T00:00:00Z",
   "calculation_version": "firetrace-demo-v2",
-  "calculation_sha256": "a8c4c01bb2a457471977ff574e90a100255e5bb82c5a54a27d4342369942e95b",
+  "calculation_sha256": "6f8aee27379776068394e4b13253f6664421d6bac122bdc848d734628eaac0a5",
   "provenance": {
     "source_kind": "generated_demo",
-    "source_records_sha256": "0401772b8768debcdb75986fd9413f3fcd5df3f44fb4cd20b4ed917de0163ea6",
+    "source_records_sha256": "a08d949b8d6222e56a48345784b28f08e4c0a0b3a8ca538b3f16c2b4595f5f1d",
     "case_id": null,
     "subset_sha256": null,
     "source_manifest_sha256": null,
@@ -13954,7 +13954,7 @@
   },
   "source_manifest": null,
   "manager_brief": {
-    "run_id": "ft-77cb236fed25fc5cd5c5c53a",
+    "run_id": "ft-30c071f2d6c4b194d8c75bb8",
     "question": "Which recorded seasonal periods deserve closer review before planning land or forest management?",
     "extent": {
       "name": "Amazon Arc — Mato Grosso",
@@ -14027,5 +14027,5 @@
     ],
     "next_review_action": "Review these periods with local incident logs, land-cover boundaries and observation-coverage evidence; retain this run's receipt and audit ZIP for that review."
   },
-  "receipt_sha256": "48aa21b4ab664037f16d4b82a5330a0bf4df4e77154c69df478ea3b1877f8b3b"
+  "receipt_sha256": "a319dc7aae42d17b677a3a335638262bdfb72d5c83b8c69b0f4ffe5379b38eeb"
 }

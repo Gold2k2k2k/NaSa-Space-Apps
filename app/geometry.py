@@ -284,7 +284,64 @@ def geometry_polygons(geometry):
     return [geometry["coordinates"]] if geometry["type"] == "Polygon" else geometry["coordinates"]
 
 
+def _geometry_key(geometry: dict[str, Any]) -> tuple:
+    gtype = geometry.get("type")
+    polys = geometry_polygons(geometry)
+    return (
+        gtype,
+        tuple(
+            tuple(
+                tuple(tuple(p) for p in ring)
+                for ring in poly
+            )
+            for poly in polys
+        ),
+    )
+
+
+_GEOM_BBOX_CACHE: dict[tuple, tuple[float, float, float, float, bool, bool]] = {}
+
+
+def _geometry_outer_bbox(geometry: dict[str, Any]) -> tuple[float, float, float, float, bool, bool]:
+    key = _geometry_key(geometry)
+    cached = _GEOM_BBOX_CACHE.get(key)
+    if cached is not None:
+        return cached
+    polys = geometry_polygons(geometry)
+    min_x = min(p[0] for poly in polys for p in poly[0])
+    max_x = max(p[0] for poly in polys for p in poly[0])
+    min_y = min(p[1] for poly in polys for p in poly[0])
+    max_y = max(p[1] for poly in polys for p in poly[0])
+    crosses_antimeridian = any(
+        abs(p[0] - q[0]) > 180
+        for poly in polys
+        for ring in poly
+        for p, q in zip(ring, ring[1:])
+    )
+    is_box = (
+        not crosses_antimeridian
+        and len(polys) == 1
+        and len(polys[0]) == 1
+        and len(polys[0][0]) == 5
+        and len({p[0] for p in polys[0][0]}) == 2
+        and len({p[1] for p in polys[0][0]}) == 2
+    )
+    if len(_GEOM_BBOX_CACHE) > 500:
+        _GEOM_BBOX_CACHE.clear()
+    res = (min_x, max_x, min_y, max_y, is_box, crosses_antimeridian)
+    _GEOM_BBOX_CACHE[key] = res
+    return res
+
+
 def geometry_contains(lon: float, lat: float, geometry: dict[str, Any]) -> bool:
+    min_x, max_x, min_y, max_y, is_box, crosses_antimeridian = _geometry_outer_bbox(geometry)
+    if not (min_y - 1e-6 <= lat <= max_y + 1e-6):
+        return False
+    if not crosses_antimeridian:
+        if not (min_x - 1e-6 <= lon <= max_x + 1e-6):
+            return False
+        if is_box:
+            return True
     return any(_polygon_contains(lon, lat, p) for p in geometry_polygons(geometry))
 
 

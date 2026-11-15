@@ -1,9 +1,11 @@
 """Shared source counts and independently checkable query/evidence contracts."""
 from __future__ import annotations
 
+import hashlib
 from typing import Any
 
 from app.canonical import canonical_json, sha256_of
+from app.observations import _ROW_CACHE, _row_sort_key, _get_row_canon, get_normalized_row_and_canon
 from app.schema_mapping import normalize_hotspot_row
 
 QUERY_TITLES = (
@@ -23,19 +25,29 @@ def summarize_inputs(raw_records: list[dict[str, Any]]) -> dict[str, Any]:
     """Count sensors from normalized values, never from combined-CSV headers."""
     normalized = []
     invalid = 0
+    modis_rows = 0
+    viirs_rows = 0
     for raw in raw_records:
         try:
-            normalized.append(normalize_hotspot_row(raw))
+            row, _ = get_normalized_row_and_canon(raw)
         except ValueError:
             invalid += 1
-    normalized.sort(key=canonical_json)
+            continue
+        inst = row["instrument"]
+        if inst == "MODIS":
+            modis_rows += 1
+        elif inst == "VIIRS":
+            viirs_rows += 1
+        normalized.append(row)
+    normalized.sort(key=_get_row_canon)
+    canon_bytes = ("[" + ",".join(_get_row_canon(r) for r in normalized) + "]").encode("utf-8")
     return {
         "total_rows": len(raw_records),
         "valid_rows": len(normalized),
         "invalid_rows": invalid,
-        "modis_rows": sum(r["instrument"] == "MODIS" for r in normalized),
-        "viirs_rows": sum(r["instrument"] == "VIIRS" for r in normalized),
-        "normalized_rows_sha256": sha256_of(normalized),
+        "modis_rows": modis_rows,
+        "viirs_rows": viirs_rows,
+        "normalized_rows_sha256": hashlib.sha256(canon_bytes).hexdigest(),
     }
 
 

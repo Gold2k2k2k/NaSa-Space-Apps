@@ -1,5 +1,5 @@
 {
-  "run_id": "ft-7b337445cf811a976a93b468",
+  "run_id": "ft-5eb2e584fde9ca256976b5bd",
   "status": "success",
   "reference_time": "2026-11-14T00:00:00Z",
   "passes": {
@@ -712,10 +712,10 @@
     "note": "Approximate modeled opportunities from nominal solar times, schematic ground-track phase and spherical viewing geometry. No ephemerides, cloud screening, actual instrument scheduling or operational accuracy are supplied. Day/night labels are nominal branches, not computed local illumination. Historical 50-minute NOAA-21/20 spacing is schematic; known source end dates are applied."
   },
   "calculation_version": "firetrace-demo-v2",
-  "calculation_sha256": "a8c4c01bb2a457471977ff574e90a100255e5bb82c5a54a27d4342369942e95b",
+  "calculation_sha256": "6f8aee27379776068394e4b13253f6664421d6bac122bdc848d734628eaac0a5",
   "provenance": {
     "source_kind": "nasa_firms_archive",
-    "source_records_sha256": "8e2718b051ea828401a9693f4737d3807d67c6601f2a020af6c6522270566da4",
+    "source_records_sha256": "f1a297d2e748e4676c590b7c5258f89019be5c46312190371f5e02dcbd2e8322",
     "case_id": "central-highlands",
     "subset_sha256": "5d28887cfc0e10d29facb805147b6743ca3353d30b496e3d21a59579f4380ef0",
     "source_manifest_sha256": "48037a8052e187a20a879788a749d77261136f2f8407c006018deaa45f341bf8",
@@ -12455,7 +12455,7 @@
     {
       "timestamp": "2026-11-14T00:00:00Z",
       "timestamp_semantics": "snapshot_reference_not_execution_time",
-      "run_id": "ft-7b337445cf811a976a93b468",
+      "run_id": "ft-5eb2e584fde9ca256976b5bd",
       "agent_name": "Extractor",
       "action": "parse_aoi_and_schemas",
       "input_summary": "aoi=CUSTOM-b430bc1fc658c759 (12.8, 108.15) window=2001..2024",
@@ -12467,7 +12467,7 @@
     {
       "timestamp": "2026-11-14T00:00:00Z",
       "timestamp_semantics": "snapshot_reference_not_execution_time",
-      "run_id": "ft-7b337445cf811a976a93b468",
+      "run_id": "ft-5eb2e584fde9ca256976b5bd",
       "agent_name": "Planner",
       "action": "plan_harmonization_queries",
       "input_summary": "mode=harmonized, flare_guard=True, confidence_min=nominal",
@@ -12479,7 +12479,7 @@
     {
       "timestamp": "2026-11-14T00:00:00Z",
       "timestamp_semantics": "snapshot_reference_not_execution_time",
-      "run_id": "ft-7b337445cf811a976a93b468",
+      "run_id": "ft-5eb2e584fde9ca256976b5bd",
       "agent_name": "Investigator",
       "action": "execute_harmonize_and_calendar",
       "input_summary": "raw_records=16258",
@@ -12491,7 +12491,7 @@
     {
       "timestamp": "2026-11-14T00:00:00Z",
       "timestamp_semantics": "snapshot_reference_not_execution_time",
-      "run_id": "ft-7b337445cf811a976a93b468",
+      "run_id": "ft-5eb2e584fde9ca256976b5bd",
       "agent_name": "Evaluator",
       "action": "run_adversarial_refutations",
       "input_summary": "4 refutation tests (R1 sensor switch, R2 overpass double-count, R3 bow-tie, R4 static flares)",
@@ -12503,7 +12503,7 @@
     {
       "timestamp": "2026-11-14T00:00:00Z",
       "timestamp_semantics": "snapshot_reference_not_execution_time",
-      "run_id": "ft-7b337445cf811a976a93b468",
+      "run_id": "ft-5eb2e584fde9ca256976b5bd",
       "agent_name": "Writer",
       "action": "apply_deterministic_rules",
       "input_summary": "rules_version=2026-11-15.3",
@@ -35030,7 +35030,7 @@
     }
   ],
   "manager_brief": {
-    "run_id": "ft-7b337445cf811a976a93b468",
+    "run_id": "ft-5eb2e584fde9ca256976b5bd",
     "question": "Which recorded seasonal periods deserve closer review before planning land or forest management?",
     "extent": {
       "name": "Central Highlands study rectangle · Vietnam",

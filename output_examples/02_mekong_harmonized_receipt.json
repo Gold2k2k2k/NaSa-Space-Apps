@@ -1,6 +1,6 @@
 {
   "receipt_version": "firetrace-receipt-v2",
-  "run_id": "ft-46c35f9a3c3fb08081781f4f",
+  "run_id": "ft-06ed4e4878fc2766e7080b09",
   "rules_version": "2026-11-15.3",
   "rules_sha256": "b5a46d2f062d05eecd0586238d457166c9636b2f661ee45b0d71b952fc4f2eb8",
   "aoi": {
@@ -13200,10 +13200,10 @@
   "verification_scope": "Unsigned reproducibility and internal evidence consistency; not source authentication.",
   "reference_time": "2026-11-14T00:00:00Z",
   "calculation_version": "firetrace-demo-v2",
-  "calculation_sha256": "a8c4c01bb2a457471977ff574e90a100255e5bb82c5a54a27d4342369942e95b",
+  "calculation_sha256": "6f8aee27379776068394e4b13253f6664421d6bac122bdc848d734628eaac0a5",
   "provenance": {
     "source_kind": "generated_demo",
-    "source_records_sha256": "409c13fedf13b80dbcae11cc75040093ec7f5fb6b247448b24580b81a951996d",
+    "source_records_sha256": "37050de6e3af6212610516ee445bf0cee82c2732de8ef9f7a875755aa68dad6e",
     "case_id": null,
     "subset_sha256": null,
     "source_manifest_sha256": null,
@@ -13982,7 +13982,7 @@
   },
   "source_manifest": null,
   "manager_brief": {
-    "run_id": "ft-46c35f9a3c3fb08081781f4f",
+    "run_id": "ft-06ed4e4878fc2766e7080b09",
     "question": "Which recorded seasonal periods deserve closer review before planning land or forest management?",
     "extent": {
       "name": "Mekong Agricultural Belt",
@@ -14055,5 +14055,5 @@
     ],
     "next_review_action": "Review these periods with local incident logs, land-cover boundaries and observation-coverage evidence; retain this run's receipt and audit ZIP for that review."
   },
-  "receipt_sha256": "3b2cedff10ff58d37c4ba18378b617342844e2a97fc076e84a6032ca03e899e4"
+  "receipt_sha256": "7bd8388b92434193d83eb9bca588d7dd2c5bb0ecb60c4e9496d991596c6edf0d"
 }

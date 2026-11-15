@@ -1,6 +1,6 @@
 {
   "receipt_version": "firetrace-receipt-v2",
-  "run_id": "ft-cabd8b8c91ecd3caa8adbe5f",
+  "run_id": "ft-4412493fe4d32160cb84b375",
   "rules_version": "2026-11-15.3",
   "rules_sha256": "b5a46d2f062d05eecd0586238d457166c9636b2f661ee45b0d71b952fc4f2eb8",
   "aoi": {
@@ -13201,10 +13201,10 @@
   "verification_scope": "Unsigned reproducibility and internal evidence consistency; not source authentication.",
   "reference_time": "2026-11-14T00:00:00Z",
   "calculation_version": "firetrace-demo-v2",
-  "calculation_sha256": "a8c4c01bb2a457471977ff574e90a100255e5bb82c5a54a27d4342369942e95b",
+  "calculation_sha256": "6f8aee27379776068394e4b13253f6664421d6bac122bdc848d734628eaac0a5",
   "provenance": {
     "source_kind": "generated_demo",
-    "source_records_sha256": "8a53b494237d53a69e19a9b6ac3cf580607bc1013d024161186fdfef42ef6146",
+    "source_records_sha256": "2d283dd6c20d27cf7736c50d1bb0e671d7d0e1890f6eda3ef41f6fe00aa791d7",
     "case_id": null,
     "subset_sha256": null,
     "source_manifest_sha256": null,
@@ -13983,7 +13983,7 @@
   },
   "source_manifest": null,
   "manager_brief": {
-    "run_id": "ft-cabd8b8c91ecd3caa8adbe5f",
+    "run_id": "ft-4412493fe4d32160cb84b375",
     "question": "Which recorded seasonal periods deserve closer review before planning land or forest management?",
     "extent": {
       "name": "Basra Industrial Flare Zone",
@@ -14056,5 +14056,5 @@
     ],
     "next_review_action": "Review these periods with local incident logs, land-cover boundaries and observation-coverage evidence; retain this run's receipt and audit ZIP for that review."
   },
-  "receipt_sha256": "255b086f89544b266336c2a0f504fe38af92e540da71d3ee84281344f6f49e54"
+  "receipt_sha256": "f6582de1d7ac017bc11d3a5e0df89b8db680f68e8574db72a5bb594685bf4c06"
 }
