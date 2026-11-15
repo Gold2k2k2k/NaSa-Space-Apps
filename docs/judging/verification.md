@@ -1,5 +1,9 @@
 # Local verification record
 
+This records the original judging-package checkpoint. For the subsequent CLI
+reference-time correction and current reference artifacts, see the
+[follow-up verification record](../verification/2026-11-15-case-reference-time-fix.md).
+
 November 15, 2026, Asia/Saigon. Application and review-fix checkpoint: `c7d0b40` on
 `codex/firetrace-upgrade`; this record's commit also contains the presentation,
 packaging and regenerated examples tested in the same working tree. No merge,

@@ -101,6 +101,51 @@ class TestJudgingWorkflows(unittest.TestCase):
             self.assertEqual(run["options"]["persona"], "land_manager")
             self.assertEqual(run["provenance"]["source_kind"], "nasa_firms_archive")
 
+    def test_cli_case_reference_time_reaches_analysis_and_exported_evidence(self):
+        expected = "2024-06-01T00:00:00Z"
+        for reference in (expected, "2024-06-01T07:00:00+07:00"):
+            with self.subTest(reference=reference), tempfile.TemporaryDirectory() as directory:
+                output, receipt, package = (Path(directory) / name for name in ("analysis.json", "receipt.json", "audit.zip"))
+                result = subprocess.run(
+                    [sys.executable, "-B", "run.py", "--case-study", "central-highlands",
+                     "--reference-time", reference, "--output", str(output),
+                     "--receipt", str(receipt), "--package", str(package)],
+                    cwd=ROOT, capture_output=True, text=True, timeout=90,
+                )
+                self.assertEqual(result.returncode, 0, result.stderr[:1000])
+                run = json.loads(output.read_text(encoding="utf-8"))
+                self.assertEqual(run["reference_time"], expected)
+                self.assertEqual(run["passes"]["reference_time"], expected)
+                self.assertTrue(all(stage["timestamp"] == expected for stage in run["trace"]))
+                self.assertNotEqual(run["run_id"], self.snapshot["run_id"])
+                self.assertEqual(run["provenance"], self.snapshot["provenance"])
+                self.assertEqual(run["sensor_calibration_audit"]["calibration_model"],
+                                 self.snapshot["sensor_calibration_audit"]["calibration_model"])
+                exported = json.loads(receipt.read_text(encoding="utf-8"))
+                self.assertEqual(exported["reference_time"], expected)
+                self.assertEqual(exported["run_id"], run["run_id"])
+                self.assertEqual(check_receipt(exported)["status"], "VALID")
+                with zipfile.ZipFile(package) as archive:
+                    self.assertIsNone(archive.testzip())
+                    self.assertEqual(json.loads(archive.read("receipt.json")), exported)
+
+    def test_cli_case_rejects_invalid_reference_times_without_writing_exports(self):
+        for reference, message in (("2024-06-01T00:00:00", "UTC offset"),
+                                   ("not-a-timestamp", "ISO timestamp"),
+                                   ("2101-06-01T00:00:00Z", "between 2000 and 2100")):
+            with self.subTest(reference=reference), tempfile.TemporaryDirectory() as directory:
+                targets = [Path(directory) / name for name in ("analysis.json", "receipt.json", "audit.zip")]
+                result = subprocess.run(
+                    [sys.executable, "-B", "run.py", "--case-study", "central-highlands",
+                     "--reference-time", reference, "--output", str(targets[0]),
+                     "--receipt", str(targets[1]), "--package", str(targets[2])],
+                    cwd=ROOT, capture_output=True, text=True, timeout=60,
+                )
+                self.assertEqual(result.returncode, 2)
+                self.assertIn(message, result.stderr)
+                self.assertNotIn("Traceback", result.stderr)
+                self.assertTrue(all(not target.exists() for target in targets))
+
 
 if __name__ == "__main__":
     unittest.main()

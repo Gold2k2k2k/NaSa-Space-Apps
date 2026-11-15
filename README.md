@@ -80,6 +80,7 @@ python run.py --aoi AOI-MEK --year 2026 --month 3 --output logs/mekong.json --re
 python verify.py logs/receipt.json
 python run.py --csv app/web/static/samples/generated-firms-demo.csv --output logs/upload.json
 python run.py --case-study central-highlands --output logs/case.json --receipt logs/case-receipt.json --package logs/case-audit.zip
+python run.py --case-study central-highlands --reference-time 2024-06-01T00:00:00Z --output logs/case-reference.json
 python run.py --lat 10 --lon 106 --radius-km 25 --year 2026 --month 7 --mode raw --output logs/custom.json
 python run.py --help
 ```
@@ -87,6 +88,8 @@ python run.py --help
 `--geojson FILE`, confidence/persona/guard, selected years and an explicit
 `--reference-time` are also supported. Snapshot references default to
 `2026-11-14T00:00:00Z`; standalone pass requests default to current UTC.
+Explicit references require a UTC offset and are normalized to UTC across the
+analysis, modeled passes and exported receipt, including NASA case studies.
 The three [example JSON files](examples/) are request bodies for `POST
 /api/analyze`, not a separate CLI input format. Their corresponding current
 receipts are in [output_examples](output_examples/); the generation check below
