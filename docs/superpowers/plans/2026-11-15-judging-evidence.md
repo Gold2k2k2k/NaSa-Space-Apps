@@ -1,6 +1,6 @@
 # Judging Evidence Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Deliver the approved real-FIRMS judging package and land-manager workflow before 23:00 Asia/Saigon on November 15, 2026.
 
@@ -46,11 +46,11 @@
 
 **Interfaces:** Preserve `box_geometry(...)`, `normalize_geometry(...)` and `apply_calendar_scenario(calendar)`. Add `calendar.reference_history`, a twelve-item list of `{month, years, values, coverage_statuses}` using all available same-month values in the fixed reference interval, independent of displayed years.
 
-- [ ] Write independent tests: bound `box_geometry(166,454,-1,1)` using a subprocess timeout; CSV at `-170,-50,70` retains all rows; nested array/object GeoJSON types return 422; compare full/narrow AMZ median percentile and an asymmetric tied distribution `[1,2,2,2,3,3,4]` (midrank `100*2.5/7`, not 50); empty reference remains unavailable.
-- [ ] Run `python -m unittest discover -s tests -p test_judging_regressions.py -v`; observe the expected failures without letting a hanging process remain live.
-- [ ] Make longitude subdivisions advance at each periodic boundary; validate string geometry types before hashing; retain fixed reference values and use them for scenarios without changing observations.
-- [ ] Run the new tests and existing geometry, scientific, workflow and receipt suites; require PASS.
-- [ ] Commit `fix: close remaining geometry and scenario review defects`.
+- [x] Write independent tests: bound `box_geometry(166,454,-1,1)` using a subprocess timeout; CSV at `-170,-50,70` retains all rows; nested array/object GeoJSON types return 422; compare full/narrow AMZ median percentile and an asymmetric tied distribution `[1,2,2,2,3,3,4]` (midrank `100*2.5/7`, not 50); empty reference remains unavailable.
+- [x] Run `python -m unittest discover -s tests -p test_judging_regressions.py -v`; observe the expected failures without letting a hanging process remain live.
+- [x] Make longitude subdivisions advance at each periodic boundary; validate string geometry types before hashing; retain fixed reference values and use them for scenarios without changing observations.
+- [x] Run the new tests and existing geometry, scientific, workflow and receipt suites; require PASS.
+- [x] Commit `fix: close remaining geometry and scenario review defects`.
 
 ## Task 2: Bundle a reproducible real NASA case
 
@@ -58,11 +58,11 @@
 
 **Interfaces:** `build_case(cache_dir: Path, *, download: bool = False, check: bool = False) -> dict`; `list_case_studies() -> list[dict]`; `load_case_study(case_id: str) -> tuple[list[dict], dict]`. ID is exactly `central-highlands`; unknown IDs raise `ValueError`, never form file paths.
 
-- [ ] Write tests for source/subset hashes, exact 37 URLs, exact count/sensor totals, declared rectangle, canonical row order, data corruption, unknown/path-like IDs and absence of invented completeness.
-- [ ] Observe RED before implementing data builder/loader.
-- [ ] Build from the existing ignored research cache. Preserve original FIRMS fields in a union CSV schema; sort canonical raw rows. Manifest records raw-file hashes/bytes/retrieval metadata, versions, transform and subset identity. `--check` is offline and compares bundled outputs; `--download` explicitly fetches originals and rejects changed expected input identities.
-- [ ] The loader returns full normalized geometry plus source kind `nasa_firms_archive`, manifest, subset hash and policy. It returns fresh data copies and verifies bundled bytes on load. No module import requires the research cache or network.
-- [ ] Run the focused suite and rebuild `--check`; require byte equality and PASS. Commit the dataset milestone.
+- [x] Write tests for source/subset hashes, exact 37 URLs, exact count/sensor totals, declared rectangle, canonical row order, data corruption, unknown/path-like IDs and absence of invented completeness.
+- [x] Observe RED before implementing data builder/loader.
+- [x] Build from the existing ignored research cache. Preserve original FIRMS fields in a union CSV schema; sort canonical raw rows. Manifest records raw-file hashes/bytes/retrieval metadata, versions, transform and subset identity. `--check` is offline and compares bundled outputs; `--download` explicitly fetches originals and rejects changed expected input identities.
+- [x] The loader returns full normalized geometry plus source kind `nasa_firms_archive`, manifest, subset hash and policy. It returns fresh data copies and verifies bundled bytes on load. No module import requires the research cache or network.
+- [x] Run the focused suite and rebuild `--check`; require byte equality and PASS. Commit the dataset milestone.
 
 ## Task 3: Freeze and assess the actual case model
 
@@ -70,10 +70,10 @@
 
 **Interfaces:** `resolve_calibration_policy(aoi: dict) -> dict`; `calibration_period(year: int, month: int, policy: dict) -> str`; `build_model_evaluation(events: list[dict], monthly_modis: dict, monthly_viirs: dict, policy: dict, model: dict) -> dict`. `harmonize_records(...)` keeps its public signature and reads an internal validated AOI policy. Its audit adds `calibration_model` and `model_evaluation`.
 
-- [ ] Write fixtures with known occupancy/FRP factors; changing only 2021–2024 rows leaves fitted factors/training identity unchanged. Test cross-midnight/year-boundary windows, filter/guard refits within training only, no factor changes for display/focus/persona/mode/scenario, sparse/constant/undefined metrics and defaults for existing generated regimes.
-- [ ] Observe RED, then separate case observation windows at policy partitions before fitting to prevent cross-boundary leakage. Both monthly occupancy and matched-window FRP fit use only 2013–2020. Store training identity/options/counts/basis and the applied factors.
-- [ ] Evaluate the identical factors on 2021–2024; return fit/held-out counts, exclusions, correlation, RMSE, mean bias and efficiency, with power metrics separate from occupancy. Keep undefined/fallback results explicit; do not optimize using held-out output.
-- [ ] Run focused and existing science/benchmark tests; require PASS without changing expected qualitative labels to hide failures. Commit the model milestone.
+- [x] Write fixtures with known occupancy/FRP factors; changing only 2021–2024 rows leaves fitted factors/training identity unchanged. Test cross-midnight/year-boundary windows, filter/guard refits within training only, no factor changes for display/focus/persona/mode/scenario, sparse/constant/undefined metrics and defaults for existing generated regimes.
+- [x] Observe RED, then separate case observation windows at policy partitions before fitting to prevent cross-boundary leakage. Both monthly occupancy and matched-window FRP fit use only 2013–2020. Store training identity/options/counts/basis and the applied factors.
+- [x] Evaluate the identical factors on 2021–2024; return fit/held-out counts, exclusions, correlation, RMSE, mean bias and efficiency, with power metrics separate from occupancy. Keep undefined/fallback results explicit; do not optimize using held-out output.
+- [x] Run focused and existing science/benchmark tests; require PASS without changing expected qualitative labels to hide failures. Commit the model milestone.
 
 ## Task 4: Complete API/CLI, receipt and audit integration
 
@@ -81,11 +81,11 @@
 
 **Interfaces:** `run_case_study(case_id: str, options: dict | None = None) -> dict`; `POST /api/case-studies/{case_id}/analyze` accepts only existing analysis options, using the strict request model plus option-only validation; `GET /api/case-studies` lists metadata. CLI adds `--case-study central-highlands` alongside mutually exclusive input selectors. `ui/setup` advertises case metadata.
 
-- [ ] Write tests for case defaults/unknown IDs, rejected geometry/extra fields on case routes, HTTP/CLI loading and source preservation through all six experiment types.
-- [ ] Observe RED, then load the actual subset with full AOI/manifest/policy and use the existing engine. Defaults: 2001–2024, focus 2024, nominal confidence, guard on, land manager, harmonized. Choose initial focus by largest historical reference median, earliest-month tie; a labeled January navigation fallback is allowed if no median exists.
-- [ ] Bind manifest, calibration/evaluation and source identities in snapshots/receipts; include matching manifest/report in audit ZIP. Add independent verifier relationships for these fields and retain documented legacy scope; new implementation files join calculation identity.
-- [ ] Verify filters refit only their training profiles, other experiments preserve factors, raw records never become generated, snapshots remain immutable, and all six downloads agree. Test malformed/tampered case metadata and extracted dependency-free verification.
-- [ ] Run focused API/CLI/receipt/export suites and commit the integrated workflow.
+- [x] Write tests for case defaults/unknown IDs, rejected geometry/extra fields on case routes, HTTP/CLI loading and source preservation through all six experiment types.
+- [x] Observe RED, then load the actual subset with full AOI/manifest/policy and use the existing engine. Defaults: 2001–2024, focus 2024, nominal confidence, guard on, land manager, harmonized. Choose initial focus by largest historical reference median, earliest-month tie; a labeled January navigation fallback is allowed if no median exists.
+- [x] Bind manifest, calibration/evaluation and source identities in snapshots/receipts; include matching manifest/report in audit ZIP. Add independent verifier relationships for these fields and retain documented legacy scope; new implementation files join calculation identity.
+- [x] Verify filters refit only their training profiles, other experiments preserve factors, raw records never become generated, snapshots remain immutable, and all six downloads agree. Test malformed/tampered case metadata and extracted dependency-free verification.
+- [x] Run focused API/CLI/receipt/export suites and commit the integrated workflow.
 
 ## Task 5: Guided review and manager brief
 
@@ -93,11 +93,11 @@
 
 **Interfaces:** `build_manager_brief(run: dict) -> dict` produces question, extent/time, source, descriptive periods, comparison, limitations, next-review action and run identity. It is included in public run evidence and rendered within the five views.
 
-- [ ] Write tests proving records-only data cannot yield a claimed verified hazard, missing medians are explicit, source/model facts match the snapshot, and non-vegetation types do not become forest-fire causes.
-- [ ] Observe RED and implement the brief with original plain English copy; relevant static text can be shared by UI and evidence rather than duplicated logic.
-- [ ] Add a separate actual-data entry and three-step guidance: choose evidence, review periods, retain evidence. Preserve generated choices and all controls. Expose training/held-out support and limitations progressively; show source badges and accessible brief/download links.
-- [ ] Extend actual-server browser tests at 375/1440 px for case loading, navigation, filters/personas/mode/scenario, source switching/races, errors and all six downloads. Require no unexpected exceptions/requests, overflow or keyboard regressions.
-- [ ] Commit the usable workflow.
+- [x] Write tests proving records-only data cannot yield a claimed verified hazard, missing medians are explicit, source/model facts match the snapshot, and non-vegetation types do not become forest-fire causes.
+- [x] Observe RED and implement the brief with original plain English copy; relevant static text can be shared by UI and evidence rather than duplicated logic.
+- [x] Add a separate actual-data entry and three-step guidance: choose evidence, review periods, retain evidence. Preserve generated choices and all controls. Expose training/held-out support and limitations progressively; show source badges and accessible brief/download links.
+- [x] Extend actual-server browser tests at 375/1440 px for case loading, navigation, filters/personas/mode/scenario, source switching/races, errors and all six downloads. Require no unexpected exceptions/requests, overflow or keyboard regressions.
+- [x] Commit the usable workflow.
 
 ## Task 6: Judging packet, release-ready handoff and final review
 
@@ -105,10 +105,10 @@
 
 **Interfaces:** `package_submission(output: Path) -> dict` creates a deterministic local ZIP of the tracked source/evidence with raw-file manifest, excluding VCS/config credentials/research caches. Publishing is not part of this function.
 
-- [ ] Prepare concise English submission/slide outline and Vietnamese team notes. Clearly distinguish 2025 reference rubric from unverified current guide; cover all five criteria and actual measured evidence/limitations.
-- [ ] Record actual held-out results, including negative/undefined outcomes; data/source/tool/AI credits and proposed Apache-2.0 license. Verify actual dependency/font licensing references. Do not claim real-user testing or public accessibility that was not established.
-- [ ] Test packet contents, repeat byte equality, source/evidence manifests, local links, all required narrative sections and exclusions; create/review the local handoff ZIP.
-- [ ] Regenerate schemas/design/examples where affected. Run the complete unit/HTTP/browser suite, judge, smoke, all current receipt verifiers, determinism checks and artifact checks. Save authoritative outputs and screenshots with revision/environment.
+- [x] Prepare concise English submission/slide outline and Vietnamese team notes. Clearly distinguish 2025 reference rubric from unverified current guide; cover all five criteria and actual measured evidence/limitations.
+- [x] Record actual held-out results, including negative/undefined outcomes; data/source/tool/AI credits and proposed Apache-2.0 license. Verify actual dependency/font licensing references. Do not claim real-user testing or public accessibility that was not established.
+- [x] Test packet contents, repeat byte equality, source/evidence manifests, local links, all required narrative sections and exclusions; create/review the local handoff ZIP.
+- [x] Regenerate schemas/design/examples where affected. Run the complete unit/HTTP/browser suite, judge, smoke, all current receipt verifiers, determinism checks and artifact checks. Save authoritative outputs and screenshots with revision/environment.
 - [ ] Apply fresh independent Standards/Spec review to the entire goal delta from `b9a8815`, fix demonstrated defects, and rerun affected checks. Review rendered actual-case flow independently where available.
 - [ ] Map every spec requirement and each judging criterion to actual proof; report remaining external limits. Commit completion evidence and confirm clean worktree. Do not publish or deploy.
 
