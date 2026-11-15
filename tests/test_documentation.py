@@ -1,5 +1,7 @@
 """Published schemas and demo instructions must describe actual outputs."""
 import re
+import subprocess
+import sys
 import unittest
 from pathlib import Path
 
@@ -55,6 +57,21 @@ class TestDocumentation(unittest.TestCase):
 
     def test_generated_schema_document_matches_api_declarations(self):
         self.assertEqual((ROOT / "docs/MAPPING_MANIFESTO.md").read_text(encoding="utf-8"), render())
+
+    def test_generated_examples_and_design_checks_pass(self):
+        for script in ("scripts/generate_examples.py", "scripts/build_design.py"):
+            with self.subTest(script=script):
+                result = subprocess.run(
+                    [sys.executable, str(ROOT / script), "--check"],
+                    cwd=ROOT,
+                    capture_output=True,
+                    text=True,
+                )
+                self.assertEqual(
+                    result.returncode,
+                    0,
+                    f"{script} --check failed (exit code {result.returncode}):\n{result.stderr}\n{result.stdout}",
+                )
 
 
 if __name__ == "__main__":

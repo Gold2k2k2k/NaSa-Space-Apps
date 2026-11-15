@@ -38,7 +38,7 @@ def main():
         valid = target.exists() and target.read_text(encoding="utf-8") == content
         print("Schema documentation current" if valid else "Schema documentation stale; regenerate it")
         return 0 if valid else 1
-    target.write_text(content, encoding="utf-8")
+    target.write_text(content, encoding="utf-8", newline="\n")
     print("Generated docs/MAPPING_MANIFESTO.md")
     return 0
 

@@ -36,7 +36,7 @@ def main():
                 return 1
     else:
         for path, contents in targets.items():
-            path.write_text(contents, encoding="utf-8")
+            path.write_text(contents, encoding="utf-8", newline="\n")
     return 0
 
 

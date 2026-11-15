@@ -150,10 +150,7 @@ function renderCurrent() {
   if (state.view === "calendar") {
     renderCalendar(state.run, state, (year, month) => runWhatIf("focus_period", [year, month]));
     renderSeason(state.run);
-    renderMap(state.run, state.draw, (point) => {
-      state.draw.points.push(point);
-      renderMap(state.run, state.draw, addDrawPoint);
-    });
+    renderMap(state.run, state.draw, addDrawPoint);
   } else if (state.view === "bridge") renderBridge(state.run);
   syncScrollHints();
 }

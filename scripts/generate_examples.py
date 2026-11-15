@@ -35,7 +35,7 @@ def upload_samples():
             "version": "2.0NRT" if viirs else "6.1NRT", "fixture_version": "synthetic-upload-demo-v2"})
     def encode(values):
         stream = io.StringIO(newline="")
-        writer = csv.DictWriter(stream, fieldnames=fields)
+        writer = csv.DictWriter(stream, fieldnames=fields, lineterminator="\n")
         writer.writeheader()
         writer.writerows(values)
         return stream.getvalue()
@@ -59,11 +59,11 @@ def main():
     stale = []
     for path, contents in expected.items():
         if arguments.check:
-            if not path.is_file() or path.read_bytes() != contents.encode("utf-8"):
+            if not path.is_file() or path.read_text(encoding="utf-8") != contents:
                 stale.append(str(path.relative_to(ROOT)))
         else:
             path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_bytes(contents.encode("utf-8"))
+            path.write_text(contents, encoding="utf-8", newline="\n")
             print(f"Generated {path.relative_to(ROOT)}")
     for path in stale:
         print(f"Stale reference: {path}", file=sys.stderr)

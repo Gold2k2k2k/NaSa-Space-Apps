@@ -13,7 +13,10 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
-from playwright.sync_api import sync_playwright
+try:
+    from playwright.sync_api import sync_playwright
+except ModuleNotFoundError:
+    sync_playwright = None
 
 from tests.test_http_boundaries import CSV
 from verify import check_receipt
@@ -22,6 +25,7 @@ ROOT = Path(__file__).resolve().parent.parent
 OUT = Path(os.environ.get("FIRETRACE_VISUAL_DIR", ROOT / ".superpowers" / "browser-artifacts"))
 
 
+@unittest.skipIf(sync_playwright is None, "playwright is not installed (install requirements-dev.txt)")
 class TestBrowserShowcase(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -139,6 +143,8 @@ class TestBrowserShowcase(unittest.TestCase):
                 self.artifacts.append(evidence)
             self.assertEqual(self.page.locator("#bench-tbody tr").count(), 12)
         self.page.locator("#tab-calendar").click()
+        self.page.locator("#view-calendar").wait_for(state="visible")
+        self.page.wait_for_timeout(180)
         targets = self.page.locator(".cal-cell").evaluate_all("nodes => nodes.map(node => [node.getBoundingClientRect().width,node.getBoundingClientRect().height])")
         self.assertTrue(all(width >= 44 and height >= 44 for width, height in targets))
         self.assertEqual(self.page.locator('.cal-cell[tabindex="0"]').count(), 1)
