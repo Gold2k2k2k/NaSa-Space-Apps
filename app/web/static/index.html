@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="dark">
-  <meta name="description" content="Explore a transparent offline MODIS and VIIRS fire-regime demonstration, inspect its assumptions, and reproduce its evidence.">
+  <meta name="description" content="Understand seasonal fire activity, compare MODIS and VIIRS, and keep the evidence behind every conclusion. Explore NASA FIRMS records or your own CSV.">
   <title>FireTrace · Fire regime explorer</title>
   <link rel="icon" href="/static/mark.svg" type="image/svg+xml">
   <link rel="preload" href="/static/fonts/Geist-Variable.woff2" as="font" type="font/woff2" crossorigin>
@@ -18,7 +18,7 @@
     <div class="bar-in">
       <a class="brand" href="#/" aria-label="FireTrace calendar"><img src="/static/mark.svg" width="28" height="28" alt=""><span>FireTrace<small>FIRE REGIME EXPLORER</small></span></a>
       <nav class="tabs" aria-label="Primary views">
-        <a id="tab-calendar" href="#/" aria-current="page">Calendar</a>
+        <a id="tab-calendar" href="#/" aria-current="page"><svg class="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="3" y="4" width="14" height="13" rx="2"/><path d="M3 8h14M7 2v4m6-4v4M7 11h2m2 0h2m-6 3h2"/></svg>Calendar</a>
         <a id="tab-bridge" href="#/bridge" aria-label="Sensor Bridge" data-short="Bridge"><span class="nav-full">Sensor Bridge</span></a>
         <a id="tab-audit" href="#/audit" aria-label="Audit &amp; Receipt" data-short="Audit"><span class="nav-full">Audit &amp; Receipt</span></a>
         <a id="tab-manifesto" href="#/manifesto">Schemas</a>
@@ -32,19 +32,24 @@
     <div id="global-error" class="error" role="alert" hidden><span id="error-message"></span><button type="button" class="btn" id="btn-retry">Retry</button></div>
 
     <section id="analysis-context" aria-label="Analysis context" class="context">
-      <div class="context-heading">
-        <div><p class="eyebrow">MODIS + VIIRS · NASA Space Apps project</p><h1 id="aoi-heading">A clearer view of thermal activity</h1><p class="small muted" id="aoi-description">Generated presets and your FIRMS CSVs share one auditable workflow.</p></div>
-        <div class="context-status"><span class="tag" id="hero-verdict-tag">LOADING</span><span class="mono small muted" id="run-seal-pill"></span></div>
+      <div class="workspace-overview">
+        <div class="context-heading">
+          <div><p class="eyebrow">FIRE REGIME WORKSPACE <span aria-hidden="true">/</span> MODIS + VIIRS</p><h1 id="aoi-heading">A clearer view of thermal activity</h1><p class="workspace-purpose">Read the season. Check the signal. Keep the evidence.</p><p class="small muted" id="aoi-description">Generated presets and your FIRMS CSVs share one auditable workflow.</p></div>
+          <div class="context-status"><span class="tag" id="hero-verdict-tag">LOADING</span><p class="small muted" id="verdict-explanation"></p></div>
+        </div>
+        <aside class="evidence-entry" aria-label="Featured NASA case study">
+          <div><p class="eyebrow"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="m10 2 7 4v8l-7 4-7-4V6zM3 6l7 4 7-4m-7 4v8"/></svg><span id="evidence-case-state">REAL DATA · READY TO EXPLORE</span></p><h2>Central Highlands, Vietnam</h2><p class="small muted">NASA FIRMS archive · 2001–2024 <span class="case-boundary">Study rectangle · observation gaps kept explicit</span></p></div>
+          <button type="button" class="btn btn-primary" id="btn-real-case">Explore NASA FIRMS case <span aria-hidden="true">→</span></button>
+        </aside>
       </div>
-      <div class="evidence-entry"><div><p class="eyebrow">START WITH EVIDENCE</p><p class="small muted">Actual NASA records · Central Highlands, Vietnam · 2001–2024</p></div><button type="button" class="btn btn-primary" id="btn-real-case">Explore NASA FIRMS case</button></div>
       <ol id="review-guide" class="review-guide" aria-label="Land-manager review steps">
-        <li><button type="button" id="btn-guide-source"><span>01</span> Choose evidence</button><small>NASA archive, generated demo or your CSV</small></li>
-        <li><a href="#/"><span>02</span> Review periods</a><small>Compare recorded activity and sensor support</small></li>
-        <li><a href="#/audit"><span>03</span> Carry the evidence</a><small>Read the manager brief and retain its audit</small></li>
+        <li><button type="button" id="btn-guide-source"><span>01</span> Choose evidence</button><small>Archive, demo or CSV</small></li>
+        <li><a href="#calendar-matrix"><span>02</span> Review periods</a><small>Activity &amp; sensor support</small></li>
+        <li><a href="#/audit"><span>03</span> Retain evidence</a><small>Manager brief &amp; audit</small></li>
       </ol>
       <div class="context-actions">
         <details id="selection-panel" class="selection-panel glass">
-          <summary>Region &amp; period <span class="small muted" id="selection-label">Choose an area</span></summary>
+          <summary>Region &amp; period <span class="small muted" id="selection-label">Choose an area</span><span class="selection-edit" aria-hidden="true">Edit</span></summary>
           <div class="selection-content">
             <p class="eyebrow">Generated presets</p>
             <div id="preset-row" class="preset-row" role="group" aria-label="Generated demonstration presets"></div>
@@ -66,23 +71,23 @@
             <details class="geometry-input"><summary>Paste GeoJSON · keyboard alternative to drawing</summary><label for="geojson-input" class="small">Point, Polygon, MultiPolygon or FeatureCollection</label><textarea id="geojson-input" rows="5" spellcheck="false" placeholder='{"type":"Polygon","coordinates":[…]}'></textarea><button type="button" class="btn" id="btn-geojson">Analyze this geometry</button></details>
           </div>
         </details>
-        <div class="csv-drop-zone" id="csv-drop-zone"><button type="button" class="btn" id="btn-upload-trigger">Upload FIRMS CSV</button><span class="small muted">or drop one .csv file here</span></div>
+        <div class="csv-drop-zone" id="csv-drop-zone"><button type="button" class="btn" id="btn-upload-trigger"><svg class="button-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M10 13V3m-4 4 4-4 4 4M3 12v5h14v-5"/></svg>Upload FIRMS CSV</button><span class="drop-hint small muted">or drop a .csv here</span></div>
         <input type="file" id="csv-file-input" accept=".csv,text/csv" hidden>
-        <label class="audience-picker">Audience<select id="persona-select"></select></label>
+        <label class="audience-picker"><span class="audience-title">Audience</span><select id="persona-select"></select></label>
       </div>
-      <p class="small muted" id="data-note">Presets are invented fixtures. Uploads establish detections, not complete coverage or absence of fire. <a href="/static/samples/generated-firms-demo.csv" download>Try a synthetic CSV</a>.</p>
+      <details class="source-details"><summary><span id="source-summary">Generated demonstration · not observed regional conditions.</span><span class="source-notes-label">Source notes</span></summary><p class="small muted" id="data-note">Presets are invented fixtures. Uploads establish detections, not complete coverage or absence of fire. <a href="/static/samples/generated-firms-demo.csv" download>Try a synthetic CSV</a>.</p></details>
       <div class="scenario-banner" id="scenario-banner" hidden><div><strong>Hypothetical metric</strong><p class="small">The focus metric is modeled at its historical median. Observed source records, HHE, raw counts and FRP stay unchanged.</p></div><button class="btn" id="btn-clear-scenario" type="button">Return to observed metric</button></div>
     </section>
 
     <section id="view-calendar" class="view stack" aria-label="Burning calendar">
       <div class="metric-grid" id="kpi-grid">
-        <article class="metric"><p class="eyebrow">Focus activity</p><strong id="kpi-focus-val" class="metric-value mono">—</strong><p id="kpi-focus-sub" class="small muted">Reference comparison loading</p></article>
-        <article class="metric"><p class="eyebrow">Robust anomaly</p><strong id="kpi-z-val" class="metric-value mono">—</strong><p id="kpi-z-sub" class="small muted">Descriptive index, not probability</p></article>
-        <article class="metric"><p class="eyebrow">Reference coverage</p><strong id="kpi-baseline-val" class="metric-value mono">—</strong><p id="kpi-baseline-sub" class="small muted">Same-month periods · 2001–2020</p></article>
-        <article class="metric"><p class="eyebrow">Summed observed FRP</p><strong id="kpi-frp-val" class="metric-value mono">—</strong><p id="kpi-frp-sub" class="small muted">Sampled power across observations</p></article>
+        <article class="metric"><p class="eyebrow"><span class="metric-index" aria-hidden="true">01</span> Focus activity</p><strong id="kpi-focus-val" class="metric-value mono">—</strong><p id="kpi-focus-sub" class="small muted">Reference comparison loading</p></article>
+        <article class="metric"><p class="eyebrow"><span class="metric-index" aria-hidden="true">02</span> Robust anomaly</p><strong id="kpi-z-val" class="metric-value mono">—</strong><p id="kpi-z-sub" class="small muted">Descriptive index, not probability</p></article>
+        <article class="metric"><p class="eyebrow"><span class="metric-index" aria-hidden="true">03</span> Reference coverage</p><strong id="kpi-baseline-val" class="metric-value mono">—</strong><p id="kpi-baseline-sub" class="small muted">Same-month periods · 2001–2020</p></article>
+        <article class="metric"><p class="eyebrow"><span class="metric-index" aria-hidden="true">04</span> Summed observed FRP</p><strong id="kpi-frp-val" class="metric-value mono">—</strong><p id="kpi-frp-sub" class="small muted">Sampled power across observations</p></article>
       </div>
 
-      <article class="panel calendar-card">
+      <article class="panel calendar-card" id="calendar-matrix">
         <div class="card-head"><div><p class="eyebrow">THE LONG VIEW</p><h2 id="cal-title">Monthly activity across sensor eras</h2></div><div class="calendar-actions"><label class="compact-label">Color ramp<select id="ramp-select"></select></label><button class="btn" type="button" id="btn-toggle-granularity" aria-pressed="false">Show 36-dekad profile</button></div></div>
         <div class="analysis-toolbar"><div class="switch-row"><button class="switch" id="btn-toggle-mode" type="button" role="switch" aria-checked="true"><i aria-hidden="true"></i><span id="mode-switch-label">Harmonized index</span></button><button class="switch" id="btn-toggle-flare" type="button" role="switch" aria-checked="true"><i aria-hidden="true"></i><span id="flare-switch-label">Non-vegetation guard on</span></button></div><span class="small muted" id="calendar-window"></span></div>
         <div id="ramp-legend" class="ramp-legend"></div>

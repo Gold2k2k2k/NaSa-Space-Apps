@@ -13,7 +13,12 @@ export function renderContext(run) {
   $("snapshot-reference").textContent = "Snapshot reference: " + utcLabel(run.reference_time);
   replace($("hero-verdict-tag"), badge(run.verdict));
   $("hero-verdict-tag").className = "";
-  $("run-seal-pill").textContent = "Rule " + run.deciding_rule + " · " + run.verdict_sha256.slice(0, 12) + "…";
+  $("verdict-explanation").textContent = run.verdict === "UNVERIFIABLE" ?
+    "Insufficient evidence for a supported comparison." : "Descriptive comparison · not a fire alert or forecast.";
+  const isCase = kind === "nasa_firms_archive";
+  $("evidence-case-state").textContent = isCase ? "NASA CASE · CURRENTLY SELECTED" : "REAL DATA · READY TO EXPLORE";
+  $("btn-real-case").closest(".evidence-entry").dataset.active = String(isCase);
+  replace($("btn-real-case"), isCase ? "Reset NASA case defaults" : "Explore NASA FIRMS case", h("span", { "aria-hidden": "true", text: "→" }));
   $("selection-label").textContent = focus.month_name + " " + focus.year + " · " + calendar.year_start + "–" + calendar.year_end;
   $("scenario-banner").hidden = !run.counterfactual;
   const note = kind === "generated_demo" ?
@@ -21,6 +26,8 @@ export function renderContext(run) {
     kind === "nasa_firms_archive" ? "Actual NASA FIRMS archive · pinned 37-file subset, 2001–2024. Study rectangle only. Missing months are unknown, not zero; complete observation coverage is unestablished." :
     "Uploaded/provided detections · missing months are unknown, not zero. Source authenticity and complete observation coverage are unestablished.";
   const ingestion = run.ingestion ? " Accepted " + integer(run.ingestion.accepted_rows) + "; rejected " + integer(run.ingestion.rejected_rows) + " row(s)." : "";
+  $("source-summary").textContent = (kind === "generated_demo" ? "Generated demonstration · not observed regional conditions." :
+    kind === "nasa_firms_archive" ? "NASA FIRMS records · coverage unestablished; missing ≠ zero." : "Provided detections · source and observation coverage unverified.") + ingestion;
   replace($("data-note"), note + ingestion + " ", h("a", { href: "/static/samples/generated-firms-demo.csv", download: "", text: "Synthetic CSV sample" }));
   $("kpi-focus-val").textContent = finite(focus.value) ? fmt(focus.value) : "Unavailable";
   $("kpi-focus-sub").textContent = unit(run) + " · reference median " + fmt(focus.hist_median) + (run.counterfactual ? " · hypothetical" : "");

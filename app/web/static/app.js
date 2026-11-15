@@ -250,7 +250,8 @@ async function upload(file) {
 
 function route(event) {
   if (location.hash === "#main" && state.routed) return;
-  const name = location.hash.replace(/^#\/?/, "").split("/")[0];
+  const calendarJump = location.hash === "#calendar-matrix";
+  const name = calendarJump ? "calendar" : location.hash.replace(/^#\/?/, "").split("/")[0];
   state.view = views.includes(name) ? name : "calendar";
   state.routed = true;
   for (const view of views) {
@@ -264,7 +265,8 @@ function route(event) {
   if (event?.type === "hashchange") {
     const heading = $("view-" + state.view).querySelector("h1,h2");
     heading?.setAttribute("tabindex", "-1"); heading?.focus({ preventScroll: true });
-    window.scrollTo({ top: 0, behavior: "auto" });
+    if (calendarJump) $("calendar-matrix").scrollIntoView({ block: "start", behavior: "auto" });
+    else window.scrollTo({ top: 0, behavior: "auto" });
   }
 }
 
