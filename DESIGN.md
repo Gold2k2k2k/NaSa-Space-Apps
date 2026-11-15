@@ -38,6 +38,11 @@ their SIL Open Font License remains in `app/web/static/fonts/OFL.txt`.
 | Bounded schedule region; complete downloads | Keeps a long modeled schedule usable without hiding rows or truncating exported evidence |
 | Explicit source-preserving form updates | Period/confidence/audience changes retain uploaded records and full geometry; coordinate/geometry generation is labeled |
 | Cancellation plus response revisions | Late requests cannot replace a newer selected result; failed work retains a clearly labeled previous snapshot |
+| Location heading beside a featured NASA case | Establishes the active region and gives first-time visitors one clear route into observed data |
+| Compact three-step review strip and a direct calendar anchor | Makes the manager workflow visible without repeating a large introduction above every view |
+| Bordered metric cards and a wider heading scale | Separates the four measures while preserving their units, coverage and interpretation limits |
+| Short source warning with expandable full notes | Keeps generated status, unknown coverage and ingestion counts visible; full provenance remains one click away |
+| Human explanation beside the verdict | States what the result supports; complete rule and hash evidence stays in Audit & Receipt |
 
 The requested Liquid Glass skill describes native iOS APIs. This Python/vanilla
 web project uses a restrained CSS adaptation: one blurred navigation layer,
@@ -80,6 +85,28 @@ research session and supplied no usable design evidence. Browser MCP desktop
 access was denied, so a fresh headless Chrome session captured the references.
 No third-party interface code, map imagery or assets were copied into FireTrace.
 
+### 2025 winner references for the local UI refresh
+
+On November 15, 2026, headless Chrome rendered the live project sites below,
+using the user's [2025 Global Winners directory](https://www.spaceappschallenge.org/2025/awards/global-winners/)
+and [NASA's winner announcement](https://www.nasa.gov/learning-resources/stem-engagement-at-nasa/nasa-announces-2025-international-space-apps-challenge-global-winners/)
+to establish the reference set. These are the versions available on the inspection
+date, not archived screenshots of their 2025 submissions. The directory returned
+HTTP 502 during this session; NASA's announcement confirmed the winner names.
+
+| Rendered reference | Observed interface pattern | FireTrace adaptation |
+| --- | --- | --- |
+| [SpaceGenes+](https://spacegenes-plus.framer.website/) | A plain-language purpose, a prominent Explore Dashboard action, and an immediate dashboard preview | A concise purpose above the active region's evidence and a clear real-data entry |
+| [Resonant Exoplanets](https://resonant-planet.vercel.app/) | Strong heading hierarchy, a primary Launch Explorer action and separate research/method links | Larger location heading; primary NASA case action; detailed methods kept in their existing views |
+| [AstroSweepers](https://astro-sweepers.vercel.app/home) | A single central message, one primary action and restrained navigation | Consistent navigation and a short three-step route through the scientific workspace |
+
+Only interface hierarchy and interaction ideas inform the refresh. The sites'
+scientific and performance claims are not evidence for FireTrace. SkySense's
+linked demo domain was parked, so it supplied no usable project UI reference.
+No external artwork, code, fonts or runtime dependencies were added. The refresh
+retains the existing five views, semantic palette, original data model and source
+preservation rules. It is local work; publishing and deployment are separate.
+
 ## Verification and visual audit
 
 The recovered Antigravity survey scored the prior interface 49.5/100. That is a
@@ -95,3 +122,7 @@ downloads. The independent final audit must score color, typography, spacing,
 components, responsiveness, dark appearance, motion, accessibility, density and
 polish, with concrete file/line findings. Its report belongs in `docs/verification/`
 after the implementation and required fixes are verified.
+
+The November 15 local refresh has a separate [rendered audit and verification
+record](docs/verification/2026-11-15-local-ui-refresh.md). It distinguishes the
+current before/after measurements from the historical Antigravity survey.

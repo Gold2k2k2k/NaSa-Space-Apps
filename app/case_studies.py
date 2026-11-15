@@ -69,12 +69,13 @@ def load_case_study(case_id: str) -> tuple[list[dict], dict]:
 
 
 def run_case_study(case_id: str, options: dict | None = None) -> dict:
+    """Run pinned records with analysis options and an optional snapshot reference."""
     from app.agents import run_investigation
     from app.models import AnalysisOptions
     records, aoi = load_case_study(case_id)
     options = {} if options is None else options.copy()
-    if set(options) - AnalysisOptions.model_fields.keys():
-        raise ValueError("Case studies accept analysis options only")
+    if set(options) - (AnalysisOptions.model_fields.keys() | {"reference_time"}):
+        raise ValueError("Case studies accept analysis options and reference_time only")
     request = {"year_start": 2001, "year_end": 2024, "focus_year": 2024,
                "focus_month": options.get("focus_month", aoi.get("default_focus_month", 2)),
                "confidence_min": "nominal", "persona": "land_manager",

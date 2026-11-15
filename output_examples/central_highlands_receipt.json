@@ -1,6 +1,6 @@
 {
   "receipt_version": "firetrace-receipt-v2",
-  "run_id": "ft-5eb2e584fde9ca256976b5bd",
+  "run_id": "ft-c7d56dbf78a41f916a723793",
   "rules_version": "2026-11-15.3",
   "rules_sha256": "b5a46d2f062d05eecd0586238d457166c9636b2f661ee45b0d71b952fc4f2eb8",
   "aoi": {
@@ -10724,7 +10724,7 @@
   "verification_scope": "Unsigned reproducibility and internal evidence consistency; not source authentication.",
   "reference_time": "2026-11-14T00:00:00Z",
   "calculation_version": "firetrace-demo-v2",
-  "calculation_sha256": "6f8aee27379776068394e4b13253f6664421d6bac122bdc848d734628eaac0a5",
+  "calculation_sha256": "c657c0d528c9cb1df8044d1de8cc175359164d17679feb11dc77a74127f1e5de",
   "provenance": {
     "source_kind": "nasa_firms_archive",
     "source_records_sha256": "f1a297d2e748e4676c590b7c5258f89019be5c46312190371f5e02dcbd2e8322",
@@ -12635,7 +12635,7 @@
     ]
   },
   "manager_brief": {
-    "run_id": "ft-5eb2e584fde9ca256976b5bd",
+    "run_id": "ft-c7d56dbf78a41f916a723793",
     "question": "Which recorded seasonal periods deserve closer review before planning land or forest management?",
     "extent": {
       "name": "Central Highlands study rectangle · Vietnam",
@@ -12711,5 +12711,5 @@
     ],
     "next_review_action": "Review these periods with local incident logs, land-cover boundaries and observation-coverage evidence; retain this run's receipt and audit ZIP for that review."
   },
-  "receipt_sha256": "a0b462ed57e698a9770c3085b5512c8f0d44fdd754cdc2fdf91d47d695cbd724"
+  "receipt_sha256": "51e10cbabaa33fb1baabad1fa6581b4f09db8a59459e0d63665ef803c446a47a"
 }

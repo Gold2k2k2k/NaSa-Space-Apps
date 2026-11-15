@@ -158,6 +158,11 @@ class TestBrowserShowcase(unittest.TestCase):
         self.assertEqual(real["provenance"]["source_kind"], "nasa_firms_archive")
         self.assertIn("NASA FIRMS", self.page.locator("#source-badge").inner_text())
         self.assertEqual(self.page.locator("#review-guide li").count(), 3)
+        self.page.locator("#tab-audit").click()
+        self.page.locator('#review-guide a[href="#calendar-matrix"]').click()
+        self.page.locator("#view-calendar").wait_for(state="visible")
+        self.page.wait_for_function("location.hash === '#calendar-matrix' && document.getElementById('calendar-matrix').getBoundingClientRect().top >= document.querySelector('header').getBoundingClientRect().bottom && document.getElementById('cal-title').getBoundingClientRect().bottom < innerHeight")
+        self.assertIn("NASA FIRMS", self.page.locator("#source-badge").inner_text())
         for width, height in ((1440, 900), (375, 812)):
             self.page.set_viewport_size({"width": width, "height": height})
             for view in ("calendar", "bridge", "audit", "manifesto", "bench"):
@@ -278,6 +283,8 @@ class TestBrowserShowcase(unittest.TestCase):
         self.assertIn("positive matched training windows", self.page.locator("#model-policy-note").inner_text())
         self.page.locator("#tab-calendar").click()
         self.assertIn("Uploaded CSV", self.page.locator("#source-badge").inner_text())
+        self.assertIn("rejected 1", self.page.locator("#source-summary").inner_text())
+        self.page.locator(".source-details > summary").click()
         self.assertIn("rejected 1", self.page.locator("#data-note").inner_text())
         original_geometry = uploaded["aoi"]["geometry"]
         changed = self.action(lambda: self.page.locator("#btn-toggle-mode").click())
