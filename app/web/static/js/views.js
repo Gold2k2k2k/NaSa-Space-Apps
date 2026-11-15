@@ -7,7 +7,7 @@ export function renderContext(run) {
   const calendar = run.calendar, focus = calendar.focus_comparison, audit = run.sensor_calibration_audit;
   const kind = run.provenance.source_kind;
   $("source-badge").dataset.kind = kind;
-  replace($("source-badge"), h("i", { "aria-hidden": "true" }), kind === "generated_demo" ? "Generated demo" : kind === "uploaded_csv" ? "Uploaded CSV" : "Provided records");
+  replace($("source-badge"), h("i", { "aria-hidden": "true" }), kind === "generated_demo" ? "Generated demo" : kind === "uploaded_csv" ? "Uploaded CSV" : kind === "nasa_firms_archive" ? "NASA FIRMS archive" : "Provided records");
   $("aoi-heading").textContent = run.aoi.name;
   $("aoi-description").textContent = run.aoi.country + " · " + fmt(run.aoi.area_km2, 1) + " km² · " + focus.month_name + " " + focus.year + " comparison";
   $("snapshot-reference").textContent = "Snapshot reference: " + utcLabel(run.reference_time);
@@ -18,6 +18,7 @@ export function renderContext(run) {
   $("scenario-banner").hidden = !run.counterfactual;
   const note = kind === "generated_demo" ?
     "Generated fixture data · simulated coverage from November 2000 through November 2026. This is a reproducible demonstration, not observed regional conditions." :
+    kind === "nasa_firms_archive" ? "Actual NASA FIRMS archive · pinned 37-file subset, 2001–2024. Study rectangle only. Missing months are unknown, not zero; complete observation coverage is unestablished." :
     "Uploaded/provided detections · missing months are unknown, not zero. Source authenticity and complete observation coverage are unestablished.";
   const ingestion = run.ingestion ? " Accepted " + integer(run.ingestion.accepted_rows) + "; rejected " + integer(run.ingestion.rejected_rows) + " row(s)." : "";
   replace($("data-note"), note + ingestion + " ", h("a", { href: "/static/samples/generated-firms-demo.csv", download: "", text: "Synthetic CSV sample" }));
@@ -74,7 +75,7 @@ export function renderBridge(run) {
   renderBridgePlot(run);
   const audit = run.sensor_calibration_audit;
   replace($("bridge-audit-kpis"),
-    metric("Pooled multiplier κ", fmt(audit.calibrated_kappa, 3), audit.calibration_valid ? "Empirical monthly sum ratio" : "Explicit demo assumption"),
+    metric("Applied multiplier κ", fmt(audit.calibrated_kappa, 3), audit.calibration_valid ? "Empirical training-month sum ratio" : "Explicit demo assumption"),
     metric("Correlation R²", finite(audit.bridge_r2) ? fmt(audit.bridge_r2, 3) : "Undefined", "Correlation is not one-to-one agreement"),
     metric("Agreement efficiency", finite(audit.bridge_efficiency) ? fmt(audit.bridge_efficiency, 3) : "Undefined", "1 − squared error / reference variation"),
     metric("Overlap RMSE", fmt(audit.bridge_rmse, 2), audit.overlap_months_count + " overlap month pairs · index units"));
@@ -84,6 +85,19 @@ export function renderBridge(run) {
     h("p", { class: "small muted", text: transition.status.replaceAll("_", " ") + ". This before/after comparison does not establish a cause." }))));
   $("calibration-note").textContent = "Applied bridge: " + audit.calibration_basis.replaceAll("_", " ") +
     ". Era ratios are diagnostics only. FRP conversion: " + fmt(audit.frp_conversion_ratio, 3) + " (" + audit.frp_calibration_basis.replaceAll("_", " ") + ").";
+  const model = audit.calibration_model, evaluation = audit.model_evaluation;
+  const years = (value) => value ? value.join("–") : "none";
+  $("model-policy-note").textContent = "Fit: " + years(model.policy.training_years) + "; held-out: " + years(model.policy.evaluation_years) +
+    ". κ " + fmt(model.kappa, 5) + "; independently fitted FRP factor " + fmt(model.frp_ratio, 5) + ". " + model.model_id + ". Filters refit training data only.";
+  const assessmentRows = [];
+  for (const [key, label] of [["training", "Training"], ["held_out", "Held-out"]]) {
+    for (const [quantity, unitLabel] of [["occupancy", "occupancy index"], ["power", "power MW"]]) {
+      const item = evaluation[key][quantity], agreement = item.agreement;
+      assessmentRows.push([label + " · " + unitLabel, item.pairs, fmt(agreement.r2, 3), fmt(agreement.rmse, 3), fmt(agreement.mean_bias, 3), fmt(agreement.efficiency, 3)]);
+    }
+  }
+  replace($("model-assessment-table"), table(["Assessment", "Pairs", "R²", "RMSE", "Mean bias", "Efficiency"], assessmentRows, { numeric: [1, 2, 3, 4, 5] }));
+  $("model-assessment-limits").textContent = evaluation.status.replaceAll("_", " ") + ". " + evaluation.limitations.join(" ") + " A dash means undefined, including constant or empty references.";
   replace($("era-table"), table(["Years", "Pairs", "Era κ", "Pooled RMSE", "Efficiency"],
     audit.era_diagnostics.map((era) => [era.years, era.overlap_months, fmt(era.empirical_kappa, 3),
       fmt(era.agreement_at_pooled_kappa.rmse, 2), fmt(era.agreement_at_pooled_kappa.efficiency, 3)]), { numeric: [1, 2, 3, 4] }));
@@ -94,6 +108,7 @@ export function renderBridge(run) {
 }
 
 export function renderAudit(run, experiment) {
+  renderManagerBrief(run);
   replace($("whatif-grid"), run.what_if.experiments.map((item) => h("article", { class: "sub-card" },
     h("h3", { text: item.label }), h("p", {}, badge(item.verdict_before), " → ", badge(item.verdict_after)),
     h("p", { text: item.available === false ? "Requires an observed focus period and reference median." : item.flips_verdict ? "Changes this demo verdict." : "Keeps this demo verdict." }),
@@ -107,6 +122,25 @@ export function renderAudit(run, experiment) {
   $("verify-cli-hint").textContent = "Download the audit ZIP, extract it, then run: python -S -B verify.py receipt.json";
   replace($("queries-tbody"), run.queries.map((query) => h("tr", {}, h("th", { scope: "row", text: query.query_id }),
     h("td", { text: query.title }), h("td", { class: "numeric", text: query.row_count }), h("td", {}, h("code", { text: query.sha256 })))));
+}
+
+function renderManagerBrief(run) {
+  const brief = run.manager_brief, comparison = brief.comparison;
+  replace($("manager-brief-content"),
+    h("p", { class: "brief-question", text: brief.question }),
+    h("p", { text: brief.extent.name + " · " + brief.period.display + "; focus " + brief.period.focus + "; reference " + brief.period.reference + ". " + brief.extent.boundary_note }),
+    h("p", {}, badge(comparison.status), " ", comparison.hypothetical ? "Hypothetical metric: " : "Recorded metric: ", fmt(comparison.value) + "; reference median " + fmt(comparison.historical_median) + " · " + comparison.metric + ". Focus coverage: " + comparison.coverage.replaceAll("_", " ") + "."),
+    h("h3", { text: "Periods to review · descriptive reference" }),
+    brief.descriptive_periods.length ? h("div", { class: "table-scroll", "aria-label": "Recorded seasonal review periods" }, table(["Month", "Median", "Recorded samples", "Complete samples"],
+      brief.descriptive_periods.map((period) => [period.month_name, fmt(period.median), period.samples, period.complete_samples]), { numeric: [1, 2, 3] })) :
+      h("p", { text: "Historical reference unavailable; no seasonal review periods can be inferred." }),
+    h("p", { text: brief.next_review_action }),
+    h("details", {}, h("summary", { text: "Evidence limits and source identity" }),
+      h("ul", {}, brief.limitations.map((line) => h("li", { text: line }))),
+      h("p", { text: brief.source.origin_note + " Retained rows: " + integer(brief.source.retained_rows) + "." }),
+      h("p", { class: "mono small", text: "Model " + comparison.model_id + (brief.source.subset_sha256 ? " · Subset " + brief.source.subset_sha256 : "") })),
+    h("p", { class: "mono small", text: "Run " + brief.run_id }),
+    h("p", { class: "small muted", text: "The receipt and audit ZIP below retain this exact snapshot and its manager brief." }));
 }
 
 export function renderManifesto(data) {

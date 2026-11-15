@@ -44,3 +44,26 @@ def load_case_study(case_id: str) -> tuple[list[dict], dict]:
                complete_periods=[], default_focus_year=2024,
                selection_notes=[manifest["extent_note"], manifest["coverage"]])
     return records, aoi
+
+
+def run_case_study(case_id: str, options: dict | None = None) -> dict:
+    from app.agents import run_investigation
+    from app.models import AnalysisOptions
+    records, aoi = load_case_study(case_id)
+    options = {} if options is None else options.copy()
+    if set(options) - AnalysisOptions.model_fields.keys():
+        raise ValueError("Case studies accept analysis options only")
+    request = {"year_start": 2001, "year_end": 2024, "focus_year": 2024,
+               "focus_month": 1, "confidence_min": "nominal", "persona": "land_manager",
+               "mode": "harmonized", "flare_guard": True, **options}
+    # A narrowed display without an explicit focus follows its final year.
+    if "focus_year" not in options:
+        request["focus_year"] = min(max(2024, request["year_start"]), request["year_end"])
+    run = run_investigation(request, raw_records_override=records, source_aoi=aoi)
+    if "focus_month" not in options:
+        defined = [r for r in run["calendar"]["climatology"] if r["median"] is not None]
+        month = max(defined, key=lambda r: r["median"])["month"] if defined else 1
+        if month != request["focus_month"]:
+            request["focus_month"] = month
+            run = run_investigation(request, raw_records_override=records, source_aoi=aoi)
+    return run

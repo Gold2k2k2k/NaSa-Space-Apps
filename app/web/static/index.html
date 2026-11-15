@@ -36,6 +36,12 @@
         <div><p class="eyebrow">MODIS + VIIRS · NASA Space Apps project</p><h1 id="aoi-heading">A clearer view of thermal activity</h1><p class="small muted" id="aoi-description">Generated presets and your FIRMS CSVs share one auditable workflow.</p></div>
         <div class="context-status"><span class="tag" id="hero-verdict-tag">LOADING</span><span class="mono small muted" id="run-seal-pill"></span></div>
       </div>
+      <div class="evidence-entry"><div><p class="eyebrow">START WITH EVIDENCE</p><p class="small muted">Actual NASA records · Central Highlands, Vietnam · 2001–2024</p></div><button type="button" class="btn btn-primary" id="btn-real-case">Explore NASA FIRMS case</button></div>
+      <ol id="review-guide" class="review-guide" aria-label="Land-manager review steps">
+        <li><button type="button" id="btn-guide-source"><span>01</span> Choose evidence</button><small>NASA archive, generated demo or your CSV</small></li>
+        <li><a href="#/"><span>02</span> Review periods</a><small>Compare recorded activity and sensor support</small></li>
+        <li><a href="#/audit"><span>03</span> Carry the evidence</a><small>Read the manager brief and retain its audit</small></li>
+      </ol>
       <div class="context-actions">
         <details id="selection-panel" class="selection-panel glass">
           <summary>Region &amp; period <span class="small muted" id="selection-label">Choose an area</span></summary>
@@ -101,11 +107,13 @@
     <section id="view-bridge" class="view stack" aria-label="Sensor bridge" hidden>
       <article class="panel"><p class="eyebrow">CROSS-SENSOR CONTEXT</p><h2 class="section-title">How the bridge changes the index</h2><p class="lead">MODIS and VIIRS detect different footprints. FireTrace groups cell windows and compares supplied overlap months using an explicit multiplier. The result is an occupancy index; correlation does not validate physical fire activity.</p><div class="chart-scroll" id="bridge-chart-box"></div><p class="small muted">Separate axes preserve units: raw detections above, HHE below. Dashed markers show the 2012 and 2018 transitions.</p></article>
       <div id="bridge-audit-kpis" class="metric-grid"></div>
+      <details class="panel" id="model-assessment"><summary>Inspect training and held-out agreement</summary><p class="small muted" id="model-policy-note"></p><div id="model-assessment-table" class="table-scroll"></div><p class="small muted" id="model-assessment-limits"></p></details>
       <div class="two-column"><article class="panel"><p class="eyebrow">BEFORE / AFTER</p><h2>Transition diagnostics</h2><div id="transition-audits" class="finding-list"></div></article><article class="panel"><p class="eyebrow">POOLED VS. ERA RATIOS</p><h2>Overlap agreement</h2><p class="small muted" id="calibration-note"></p><div id="era-table" class="table-scroll"></div></article></div>
       <article class="panel"><h2>Annual sensor evidence</h2><p class="small muted">Partial totals remain partial. Trend calculations use complete declared years only.</p><div class="table-scroll"><table class="data-table"><thead><tr><th scope="col">Year</th><th scope="col">Raw MODIS</th><th scope="col">Raw VIIRS</th><th scope="col">HHE</th><th scope="col">Summed FRP · MW</th><th scope="col">Coverage</th></tr></thead><tbody id="bridge-tbody"></tbody></table></div></article>
     </section>
 
     <section id="view-audit" class="view stack" aria-label="Evaluator and receipt" hidden>
+      <article class="panel" id="manager-brief" aria-label="Manager review brief"><p class="eyebrow">CARRY THE EVIDENCE</p><h2>Manager review brief</h2><div id="manager-brief-content"></div><div class="export-actions"><a class="btn" id="dl-brief-receipt" aria-disabled="true" download>Retain receipt JSON</a><a class="btn btn-primary" id="dl-brief-package" aria-disabled="true" download>Retain audit ZIP</a></div></article>
       <article class="panel"><p class="eyebrow">CHANGE ONE ASSUMPTION</p><h2 class="section-title">Counterfactual laboratory</h2><p class="lead">Each experiment creates a new snapshot and retains the original. A median scenario changes the hypothetical metric; it does not invent observations.</p><div id="whatif-grid" class="card-grid"></div></article>
       <article class="panel"><p class="eyebrow">EVIDENCE &amp; LIMITS</p><h2>Four automatic diagnostics</h2><p class="small muted">Diagnostic results apply to these supplied inputs and demonstration methods.</p><div id="refutation-grid" class="card-grid"></div></article>
       <article class="panel"><p class="eyebrow">DETERMINISTIC PIPELINE</p><h2>Five stages, one trace</h2><p class="small muted">Extractor → Planner → Investigator → Evaluator → Writer. Stage timestamps use the snapshot reference, not execution time.</p><div class="table-scroll"><table class="data-table"><thead><tr><th scope="col">Stage</th><th scope="col">Action</th><th scope="col">Input</th><th scope="col">Output</th><th scope="col">Rows</th></tr></thead><tbody id="trace-tbody"></tbody></table></div></article>

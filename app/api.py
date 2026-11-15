@@ -15,6 +15,8 @@ from app.agents import PERSONAS, apply_what_if, run_investigation
 from app.datasets import AOIS, MAX_CSV_BYTES, list_aois, parse_uploaded_csv
 from app.http_limits import BodyLimits
 from app.models import AnalysisRequest, WhatIfBody
+from app.models import AnalysisOptions
+from app.case_studies import list_case_studies, run_case_study
 from app.run_store import RunStore, SnapshotConflict, SnapshotLimit
 from app.exports import (
     export_calendar_csv,
@@ -181,6 +183,7 @@ def ui_setup() -> dict[str, Any]:
         "rules_version": RULES_VERSION,
         "default_aoi": "AOI-AMZ",
         "aois": list_aois(),
+        "case_studies": list_case_studies(),
         "color_ramps": COLOR_RAMPS,
         "personas": [{"id": k, "label": v} for k, v in PERSONAS.items()],
         "year_min": 2000,
@@ -206,6 +209,26 @@ def analyze(request: AnalysisRequest) -> dict[str, Any]:
         run_data = run_investigation(request.model_dump(exclude_unset=True))
     except ValueError as err:
         raise HTTPException(status_code=422, detail=str(err)) from err
+    _store_run(run_data)
+    return _public_run(run_data)
+
+
+@app.get("/api/case-studies")
+def case_studies() -> list[dict]:
+    return list_case_studies()
+
+
+@app.post("/api/case-studies/{case_id}/analyze")
+def analyze_case_study(case_id: str, request: AnalysisRequest) -> dict[str, Any]:
+    if case_id not in {item["case_id"] for item in list_case_studies()}:
+        raise HTTPException(404, "Unknown case study")
+    options = request.model_dump(exclude_unset=True)
+    if set(options) - AnalysisOptions.model_fields.keys():
+        raise HTTPException(422, "Case studies accept analysis options only")
+    try:
+        run_data = run_case_study(case_id, options)
+    except ValueError as error:
+        raise HTTPException(422, str(error)) from error
     _store_run(run_data)
     return _public_run(run_data)
 

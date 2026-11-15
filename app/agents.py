@@ -362,7 +362,7 @@ def run_investigation(
     for step_record in trace:
         step_record["timestamp"] = reference
 
-    return {
+    result = {
         "run_id": run_id,
         "status": "success",
         "reference_time": reference,
@@ -370,9 +370,12 @@ def run_investigation(
         "calculation_version": CALCULATION_VERSION,
         "calculation_sha256": calculation,
         "provenance": {"source_kind": aoi["source_kind"], "source_records_sha256": source_digest,
+                       "case_id": aoi.get("case_id"), "subset_sha256": aoi.get("subset_sha256"),
+                       "source_manifest_sha256": aoi.get("source_manifest_sha256"),
                        "fixture_version": "generated-demo-v2" if aoi["source_kind"] == "generated_demo" else None,
                        "coverage_claim": "simulated_complete_periods" if aoi["source_kind"] == "generated_demo" else "records_only",
                        "source_authentication": "not established"},
+        "source_manifest": copy.deepcopy(aoi.get("source_manifest")),
         "ingestion": copy.deepcopy(aoi.get("ingestion")),
         "lineage": copy.deepcopy(lineage),
         "counterfactual": copy.deepcopy(active_calendar.get("counterfactual")),
@@ -394,6 +397,9 @@ def run_investigation(
             "selection_model": aoi.get("selection_model", "preset_box"),
             "selection_notes": aoi.get("selection_notes", []),
             "source_kind": aoi["source_kind"],
+            "case_id": aoi.get("case_id"), "subset_sha256": aoi.get("subset_sha256"),
+            "source_manifest_sha256": aoi.get("source_manifest_sha256"),
+            "calibration_policy": copy.deepcopy(aoi.get("calibration_policy")),
             "complete_periods": aoi["complete_periods"],
         },
         "options": options,
@@ -421,6 +427,9 @@ def run_investigation(
         "_input_summary": input_summary,
         "_persistent_cells_count": len(harmonized["persistent_flare_cells"]),
     }
+    from app.manager_brief import build_manager_brief
+    result["manager_brief"] = build_manager_brief(result)
+    return result
 
 
 def apply_what_if(run_state: dict[str, Any], field: str, value: Any) -> dict[str, Any]:

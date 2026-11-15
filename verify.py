@@ -10,6 +10,7 @@ Exit codes:
 from __future__ import annotations
 
 import json
+import hashlib
 import sys
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -21,8 +22,64 @@ from app.receipt import LEGACY_RECEIPT_VERSION, RECEIPT_VERSION, rules_sha256
 from app.rules import decide
 from app.rules import RULES_VERSION
 from app import legacy_rules
+from app.calibration import resolve_calibration_policy
+from app.case_studies import MANIFEST_SHA256
+from app.manager_brief import build_manager_brief
 
 MAX_RECEIPT_BYTES = 20 * 1024 * 1024
+
+
+def _model_source_problems(receipt):
+    problems = []
+    audit = receipt["sensor_calibration_audit"]
+    model = audit.get("calibration_model")
+    if model is not None:
+        if not isinstance(model, dict):
+            raise ValueError("Calibration model must be an object")
+        expected_id = "model-" + sha256_of({k: v for k, v in model.items() if k != "model_id"})[:24]
+        if model.get("model_id") != expected_id:
+            problems.append("calibration model identity mismatch")
+        evaluation = audit.get("model_evaluation")
+        if not isinstance(evaluation, dict):
+            raise ValueError("Model evaluation must be an object")
+        if (evaluation.get("model_id") != model.get("model_id") or evaluation.get("policy") != model.get("policy")
+                or evaluation.get("applied_kappa") != model.get("kappa") or evaluation.get("applied_frp_ratio") != model.get("frp_ratio")):
+            problems.append("model evaluation differs from applied calibration")
+        if (round(model["kappa"], 8) != audit.get("calibrated_kappa") or round(model["frp_ratio"], 8) != audit.get("frp_conversion_ratio")
+                or model.get("training_month_pairs") != audit.get("overlap_months_count")
+                or model.get("training_power_pairs") != audit.get("matched_frp_windows")):
+            problems.append("applied model disagrees with audit factors/counts")
+        profile = model.get("filter_profile", {})
+        if profile != {"confidence_min": receipt["options"]["confidence_min"], "exclude_static_flares": receipt["options"]["flare_guard"]}:
+            problems.append("model filter profile differs from analysis options")
+    if "manager_brief" in receipt:
+        expected_brief = build_manager_brief({**receipt, "_input_summary": receipt["input_summary"]})
+        if sha256_of(receipt["manager_brief"]) != sha256_of(expected_brief):
+            problems.append("manager brief disagrees with snapshot evidence")
+    if receipt.get("provenance", {}).get("source_kind") == "nasa_firms_archive":
+        manifest = receipt.get("source_manifest")
+        if not isinstance(manifest, dict):
+            raise ValueError("NASA case receipt requires a source manifest")
+        raw = (json.dumps(manifest, ensure_ascii=False, sort_keys=True, indent=2) + "\n").encode("utf-8")
+        manifest_hash = hashlib.sha256(raw).hexdigest()
+        provenance, aoi = receipt["provenance"], receipt["aoi"]
+        if (manifest_hash != MANIFEST_SHA256 or provenance.get("source_manifest_sha256") != manifest_hash
+                or aoi.get("source_manifest_sha256") != manifest_hash):
+            problems.append("NASA case manifest identity mismatch")
+        subset = manifest.get("subset", {})
+        if (provenance.get("subset_sha256") != subset.get("sha256") or aoi.get("subset_sha256") != subset.get("sha256")
+                or provenance.get("case_id") != manifest.get("case_id") or aoi.get("case_id") != manifest.get("case_id")):
+            problems.append("NASA subset provenance mismatch")
+        inputs = receipt.get("input_summary", {})
+        for field, source in (("total_rows", "rows"), ("modis_rows", "modis_rows"), ("viirs_rows", "viirs_rows")):
+            if inputs.get(field) != subset.get(source):
+                problems.append("NASA subset counts disagree with inputs")
+        if aoi.get("complete_periods") or any(c.get("is_complete") for c in receipt["calendar"]["cells"]):
+            problems.append("records-only archive cannot establish complete observation periods")
+        expected_policy = resolve_calibration_policy({"calibration_policy": manifest.get("calibration_policy")})
+        if not model or model.get("policy") != expected_policy or aoi.get("calibration_policy") != manifest.get("calibration_policy"):
+            problems.append("NASA case training/evaluation policy mismatch")
+    return problems
 
 
 def _receipt_datetime(value):
@@ -168,6 +225,7 @@ def check_receipt(receipt: dict[str, Any]) -> dict[str, Any]:
         if sha256_of(calendar["cells"]) != cal_summary.get("cells_sha256"):
             problems.append("calendar cells_sha256 mismatch")
         problems.extend(_snapshot_problems(receipt, calendar))
+        problems.extend(_model_source_problems(receipt))
     else:
         # v1 did not carry full cells or independent source counts. Check every
         # available relationship, and identify that narrower scope in the result.

@@ -68,6 +68,14 @@ assert len(rows)==3 and all(geometry_contains(x,0,aoi["geometry"]) for x in [-17
         self.assertIsNotNone(values[1])
         self.assertEqual(values[0], values[1])
 
+    def test_tied_reference_midrank_survives_display_rounding(self):
+        values = [1, 2, 2, 2, 3, 3, 4]
+        data = {"hotspots": [event(y, v + 1e-8) for y, v in zip(range(2001, 2008), values)] + [event(2024, 10)]}
+        calendar = build_burning_calendar(data, parse_custom_aoi({"lat": 0, "lon": 0}),
+                                          year_start=2024, year_end=2024, focus_year=2024, focus_month=8)
+        apply_calendar_scenario(calendar)
+        self.assertAlmostEqual(calendar["focus_comparison"]["empirical_percentile"], 35.714286, places=6)
+
     def test_empty_reference_does_not_invent_median_scenario(self):
         calendar = build_burning_calendar({"hotspots": [event(2024, 1)]}, parse_custom_aoi({"lat": 0, "lon": 0}),
                                           year_start=2024, year_end=2024, focus_year=2024, focus_month=8)
