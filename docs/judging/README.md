@@ -28,6 +28,8 @@ Create `logs` first for CLI output. Extracted audit ZIPs include `verify.py` and
 standard-library modules; verification needs no third-party packages. Analysis
 replay needs the declared application dependencies. The submission ZIP is a
 local source/evidence handoff, not an upload. Its manifest lists file hashes.
+Run the packaging command from a Git checkout: it selects tracked source files.
+The extracted bundle can run the analysis and verifier without Git.
 
 The repository was private when reviewed. Public links, actual submission,
 repository visibility and deployment remain owner-controlled steps. Confirm the

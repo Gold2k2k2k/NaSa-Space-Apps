@@ -13,7 +13,7 @@ evidence. Its assessment was **with fixes**, with three actionable issues:
 
 All three were reproduced as failing tests before the repairs. The packet
 regression also first failed when `.gitattributes` was excluded. The complete
-suite is rerun after this single fix pass, with results retained in
+suite was rerun after this single fix pass: **166 tests PASS** (361.602 s), with results retained in
 [verification](verification.md). No second review is substituted for those
 regressions and the full suite. No minor findings were deferred.
 

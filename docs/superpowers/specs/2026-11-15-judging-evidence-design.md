@@ -1,6 +1,6 @@
 # FireTrace: judging evidence and forest-manager workflow
 
-Status: approved by the user in Q7 on November 15, 2026, after builder review.
+Status: approved in Q7 and implemented on November 15, 2026. Independent review findings were reproduced and fixed; [completion evidence](../../judging/verification.md) records the final checks.
 Date: November 15, 2026. Target: ready before **23:00 Asia/Saigon** today.
 Starting implementation revision: `e3c1670` on `codex/firetrace-upgrade`.
 

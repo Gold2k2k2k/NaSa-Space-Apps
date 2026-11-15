@@ -98,6 +98,7 @@ test_fit_is_training_only_and_heldout_assesses_same_factors (test_judging_calibr
 test_sparse_fallback_and_filter_profile_are_explicit (test_judging_calibration.TestJudgingCalibration.test_sparse_fallback_and_filter_profile_are_explicit) ... ok
 test_bundle_matches_declared_sources_and_extent (test_judging_case_data.TestJudgingCaseData.test_bundle_matches_declared_sources_and_extent) ... ok
 test_committed_judging_results_match_the_verifiable_receipt (test_judging_case_data.TestJudgingCaseData.test_committed_judging_results_match_the_verifiable_receipt) ... ok
+test_crlf_git_checkout_can_load_the_pinned_case (test_judging_case_data.TestJudgingCaseData.test_crlf_git_checkout_can_load_the_pinned_case) ... ok
 test_loader_is_strict_fresh_and_detects_corruption (test_judging_case_data.TestJudgingCaseData.test_loader_is_strict_fresh_and_detects_corruption) ... ok
 test_tracked_source_snapshot_is_repeatable_and_excludes_secrets (test_judging_packet.TestJudgingPacket.test_tracked_source_snapshot_is_repeatable_and_excludes_secrets) ... ok
 test_broad_wrapped_box_and_csv_terminate_and_retain_points (test_judging_regressions.TestJudgingRegressions.test_broad_wrapped_box_and_csv_terminate_and_retain_points) ... ok
@@ -165,6 +166,6 @@ test_missing_focus_is_unverifiable_not_a_numeric_exception (test_science_contrac
 test_post_peak_activity_is_not_called_early_season (test_science_contracts.TestRuleBoundaries.test_post_peak_activity_is_not_called_early_season) ... ok
 
 ----------------------------------------------------------------------
-Ran 165 tests in 427.150s
+Ran 166 tests in 361.602s
 
 OK

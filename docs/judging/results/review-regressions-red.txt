@@ -1,0 +1,45 @@
+test_crlf_git_checkout_can_load_the_pinned_case (tests.test_judging_case_data.TestJudgingCaseData.test_crlf_git_checkout_can_load_the_pinned_case) ... FAIL
+test_receipt_links_manifest_model_and_evaluation_and_zip_verifies (tests.test_judging_workflows.TestJudgingWorkflows.test_receipt_links_manifest_model_and_evaluation_and_zip_verifies) ... FAIL
+test_20_upload_options_personas_and_all_six_downloads (tests.test_browser_showcase.TestBrowserShowcase.test_20_upload_options_personas_and_all_six_downloads) ... FAIL
+
+======================================================================
+FAIL: test_crlf_git_checkout_can_load_the_pinned_case (tests.test_judging_case_data.TestJudgingCaseData.test_crlf_git_checkout_can_load_the_pinned_case)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\NaSa-Space-Apps\tests\test_judging_case_data.py", line 40, in test_crlf_git_checkout_can_load_the_pinned_case
+    rows, aoi = case_studies.load_case_study("central-highlands")
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\NaSa-Space-Apps\app\case_studies.py", line 29, in load_case_study
+    raise ValueError("Case manifest integrity failure")
+ValueError: Case manifest integrity failure
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "D:\NaSa-Space-Apps\tests\test_judging_case_data.py", line 42, in test_crlf_git_checkout_can_load_the_pinned_case
+    self.fail(f"Fresh Windows-style checkout must retain pinned bytes: {error}")
+AssertionError: Fresh Windows-style checkout must retain pinned bytes: Case manifest integrity failure
+
+======================================================================
+FAIL: test_receipt_links_manifest_model_and_evaluation_and_zip_verifies (tests.test_judging_workflows.TestJudgingWorkflows.test_receipt_links_manifest_model_and_evaluation_and_zip_verifies)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\NaSa-Space-Apps\tests\test_judging_workflows.py", line 66, in test_receipt_links_manifest_model_and_evaluation_and_zip_verifies
+    self.assertEqual(check_receipt(forged)["status"], "TAMPERED")
+AssertionError: 'VALID' != 'TAMPERED'
+- VALID
++ TAMPERED
+
+
+======================================================================
+FAIL: test_20_upload_options_personas_and_all_six_downloads (tests.test_browser_showcase.TestBrowserShowcase.test_20_upload_options_personas_and_all_six_downloads)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\NaSa-Space-Apps\tests\test_browser_showcase.py", line 271, in test_20_upload_options_personas_and_all_six_downloads
+    self.assertIn("assumed identity", self.page.locator("#model-policy-note").inner_text().lower())
+AssertionError: 'assumed identity' not found in 'fit: 2012�2024; held-out: none. \u03ba 0.58000; independently fitted frp factor 1.00000. model-49a819cf539383f3dd28581a. filters refit training data only.'
+
+----------------------------------------------------------------------
+Ran 3 tests in 18.723s
+
+FAILED (failures=3)

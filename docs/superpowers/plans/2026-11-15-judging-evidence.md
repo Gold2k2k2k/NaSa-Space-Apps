@@ -109,8 +109,8 @@
 - [x] Record actual held-out results, including negative/undefined outcomes; data/source/tool/AI credits and proposed Apache-2.0 license. Verify actual dependency/font licensing references. Do not claim real-user testing or public accessibility that was not established.
 - [x] Test packet contents, repeat byte equality, source/evidence manifests, local links, all required narrative sections and exclusions; create/review the local handoff ZIP.
 - [x] Regenerate schemas/design/examples where affected. Run the complete unit/HTTP/browser suite, judge, smoke, all current receipt verifiers, determinism checks and artifact checks. Save authoritative outputs and screenshots with revision/environment.
-- [ ] Apply fresh independent Standards/Spec review to the entire goal delta from `b9a8815`, fix demonstrated defects, and rerun affected checks. Review rendered actual-case flow independently where available.
-- [ ] Map every spec requirement and each judging criterion to actual proof; report remaining external limits. Commit completion evidence and confirm clean worktree. Do not publish or deploy.
+- [x] Apply fresh independent Standards/Spec review to the entire goal delta from `b9a8815`, fix demonstrated defects, and rerun affected checks. Review rendered actual-case flow independently where available.
+- [x] Map every spec requirement and each judging criterion to actual proof; report remaining external limits. Commit completion evidence and confirm clean worktree. Do not publish or deploy.
 
 ## Execution and self-review
 

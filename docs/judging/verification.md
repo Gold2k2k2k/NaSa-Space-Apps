@@ -1,6 +1,6 @@
 # Local verification record
 
-November 15, 2026, Asia/Saigon. Application checkpoint: `8cae9ae` on
+November 15, 2026, Asia/Saigon. Application and review-fix checkpoint: `c7d0b40` on
 `codex/firetrace-upgrade`; this record's commit also contains the presentation,
 packaging and regenerated examples tested in the same working tree. No merge,
 push, visibility change or deployment was performed for this judging package.
@@ -12,7 +12,7 @@ build were not exercised in this verification.
 
 | Check | Actual result | Retained evidence |
 |---|---|---|
-| `python -m unittest discover -s tests -v` | **165 tests PASS**, 427.150 s | [Complete output](results/unittest.txt) |
+| `python -m unittest discover -s tests -v` | **166 tests PASS**, 361.602 s | [Complete output](results/unittest.txt) |
 | `python judge.py` | **7/7 PASS** | [Judge output](results/judge.txt) |
 | `python smoke_test.py` | **3/3 PASS**, HTTP trap bench **12/12** | [Smoke output](results/smoke.txt) |
 | `python -m pip check` | No broken requirements | [Environment metadata](results/environment.json) |
@@ -62,7 +62,7 @@ accessibility/usability study. File identities are in [screenshot metadata](resu
 | Immutable case workflow and portable proof | Case API/CLI, full AOI/source/policy retention, tamper tests, six browser downloads, extracted verification and exact JSON replay |
 | Manager task within five views | Separate NASA entry, three steps, source labels, same-snapshot brief, receipt/ZIP links, mobile/keyboard browser proof |
 | Judging/presentation/release preparation | English submission and slides, Vietnamese notes, dated rubric evidence matrix, source/AI/font/dependency credits, Apache-2.0 and deterministic local ZIP builder |
-| Independent final review | Review outcome is recorded below after the fresh read-only review; any required fixes receive a regression and renewed checks |
+| Independent final review | [One fresh read-only review](review.md) identified three issues; all were reproduced and fixed, then the complete 166-test suite passed. No minor findings deferred |
 
 ## Execution decisions and practical limits
 
