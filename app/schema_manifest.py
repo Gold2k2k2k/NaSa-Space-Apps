@@ -81,6 +81,8 @@ TARGET_SCHEMAS = {
         "trend_complete_year_count": "integer number of complete annual totals used",
     },
     "sensor_calibration_audit": {
+        "calibration_model": "Applied occupancy and independently fitted FRP factors; fixed temporal policy, training-input digest, filter profile and model identity",
+        "model_evaluation": "Matching applied factors assessed separately on training and held-out periods; paired occupancy and power counts, exclusions and nullable descriptive agreement; not ground truth",
         **_fields("aoi_id method_version overlap_years", "AOI, original demo method version and February 2012..December 2024 overlap"),
         **_fields("overlap_months_count calibration_valid calibration_basis", "matched positive monthly count; pooled fit needs >=3 months, otherwise assumed .58"),
         **_fields("raw_viirs_to_modis_ratio calibrated_kappa", "nullable raw ratio; kappa=sum(M occupancy)/sum(V occupancy), or labeled assumption"),

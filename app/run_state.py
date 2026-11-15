@@ -13,7 +13,7 @@ CALCULATION_VERSION = "firetrace-demo-v2"
 
 def calculation_digest():
     root = Path(__file__).resolve().parent
-    names = ("agents.py", "calendar_engine.py", "canonical.py", "datasets.py", "evidence.py",
+    names = ("agents.py", "calendar_engine.py", "calibration.py", "case_studies.py", "canonical.py", "datasets.py", "evidence.py",
              "geo_passes.py", "geometry.py", "harmonize.py", "models.py", "observations.py",
              "rules.py", "run_state.py", "satellites.py", "schema_mapping.py", "stats.py")
     return sha256_of({name: (root / name).read_text(encoding="utf-8-sig") for name in names})

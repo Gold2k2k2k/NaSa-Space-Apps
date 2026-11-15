@@ -12,6 +12,8 @@ from typing import Any
 from app.observations import (normalize_observations, observation_windows,
                               persistent_cells, summarize_window)
 from app.stats import calibration_agreement
+from app.calibration import resolve_calibration_policy, calibration_period, build_model_evaluation
+from app.canonical import sha256_of
 
 DEFAULT_KAPPA = 0.58
 DEFAULT_FRP_RATIO = 1.0
@@ -56,7 +58,17 @@ def harmonize_records(raw_records: list[dict[str, Any]], aoi: dict[str, Any], *,
                       confidence_min: str = "low") -> dict[str, Any]:
     rows, quality, coverage = normalize_observations(raw_records, aoi, confidence_min)
     inferred, known_static = persistent_cells(rows)
-    windows = observation_windows(rows)
+    policy = resolve_calibration_policy(aoi)
+    if policy["held_out"]:
+        # Split before clustering: a Dec 31 window must not ingest Jan 1 data
+        # from the assessment period into either fitted quantity.
+        partitions = defaultdict(list)
+        for row in rows:
+            partitions[calibration_period(row["year"], row["month"], policy)].append(row)
+        windows = [w for name in sorted(partitions) for w in observation_windows(partitions[name])]
+        windows.sort(key=lambda w: (w.rows[0]["acq_date"], w.rows[0]["acq_time"] or "", w.cell_id, w.daynight, w.source_type))
+    else:
+        windows = observation_windows(rows)
     events = [summarize_window(window, inferred, aoi.get("geometry")) for window in windows]
     for event in events:
         # Persistence alone does not establish a non-vegetation source or cause.
@@ -65,7 +77,7 @@ def harmonize_records(raw_records: list[dict[str, Any]], aoi: dict[str, Any], *,
     monthly_modis = _sum_months(events, "modis_w")
     monthly_viirs = _sum_months(events, "viirs_w")
     overlap = sorted(month for month in monthly_modis.keys() & monthly_viirs.keys()
-                     if (2012, 2) <= month <= (2024, 12)
+                     if calibration_period(*month, policy) == "training"
                      and monthly_modis[month] > 0 and monthly_viirs[month] > 0)
     calibrated = len(overlap) >= 3
     kappa = (math.fsum(monthly_modis[m] for m in overlap) /
@@ -83,11 +95,19 @@ def harmonize_records(raw_records: list[dict[str, Any]], aoi: dict[str, Any], *,
                      "agreement_at_pooled_kappa": calibration_agreement(
                          [monthly_modis[m] for m in months], [kappa * monthly_viirs[m] for m in months])})
     matched_frp = [e for e in events if e["include_in_calendar"]
-                   and (2012, 2) <= (e["year"], e["month"]) <= (2024, 12)
+                   and calibration_period(e["year"], e["month"], policy) == "training"
                    and e["modis_frp_mw"] is not None and e["modis_frp_mw"] > 0
                    and e["viirs_frp_mw"] is not None and e["viirs_frp_mw"] > 0]
     frp_ratio = (math.fsum(e["modis_frp_mw"] for e in matched_frp) /
                  math.fsum(e["viirs_frp_mw"] for e in matched_frp)) if len(matched_frp) >= 3 else DEFAULT_FRP_RATIO
+    model = {"policy": policy, "kappa": kappa, "frp_ratio": frp_ratio,
+             "occupancy_basis": "empirical_monthly_sum_ratio" if calibrated else "assumed_demo_kappa_insufficient_overlap",
+             "frp_basis": "matched_window_sum_ratio" if len(matched_frp) >= 3 else "assumed_identity_insufficient_pairs",
+             "training_month_pairs": len(overlap), "training_power_pairs": len(matched_frp),
+             "training_rows_sha256": sha256_of([r for r in rows if calibration_period(r["year"], r["month"], policy) == "training"]),
+             "filter_profile": {"confidence_min": confidence_min, "exclude_static_flares": exclude_static_flares}}
+    model["model_id"] = "model-" + sha256_of(model)[:24]
+    evaluation = build_model_evaluation(events, monthly_modis, monthly_viirs, policy, model)
 
     for event in events:
         month = event["year"], event["month"]
@@ -127,6 +147,7 @@ def harmonize_records(raw_records: list[dict[str, Any]], aoi: dict[str, Any], *,
     audit = {
         "aoi_id": aoi["aoi_id"],
         "method_version": "occupancy-windows-v2",
+        "calibration_model": model, "model_evaluation": evaluation,
         "overlap_years": f"{overlap[0][0]}-{overlap[-1][0]}" if overlap else "none",
         "overlap_months_count": len(overlap), "calibration_valid": calibrated,
         "calibration_basis": "empirical_monthly_sum_ratio" if calibrated else "assumed_demo_kappa_insufficient_overlap",
