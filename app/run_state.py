@@ -37,8 +37,7 @@ def apply_calendar_scenario(calendar):
     if old is None or target is None:
         raise ValueError("A median scenario requires an observed focus period and reference median")
     year, month = focus["year"], focus["month"]
-    history = [c["value"] for c in calendar["cells"] if c["month"] == month
-               and 2001 <= c["year"] <= 2020 and c["is_observed"]]
+    history = next((r["values"] for r in calendar["reference_history"] if r["month"] == month), [])
     percentile = empirical_percentile(history, target)
     for cell in calendar["cells"]:
         if (cell["year"], cell["month"]) == (year, month):

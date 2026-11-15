@@ -49,11 +49,13 @@ def build_burning_calendar(harmonized_data: dict[str, Any], aoi: dict[str, Any],
     def metric(items):
         return total(items, "raw_detections" if use_raw else "hhe")
 
-    distributions, history_by_month = [], {}
+    distributions, history_by_month, reference_history = [], {}, []
     for month in range(1, 13):
         years = [y for y in range(baseline_start, baseline_end + 1) if (y, month) in observed]
         values = [metric(grouped[(y, month)]) for y in years]
         history_by_month[month] = values
+        reference_history.append({"month": month, "years": years, "values": values,
+                                  "coverage_statuses": ["complete" if (y, month) in complete else "records_only" for y in years]})
         row = _distribution(values)
         row["iqr"] = row["q75"] - row["q25"] if values else None
         row["hhe_median"] = quantile([total(grouped[(y, month)], "hhe") for y in years], .5)
@@ -161,7 +163,7 @@ def build_burning_calendar(harmonized_data: dict[str, Any], aoi: dict[str, Any],
             "max_cell_value": max((c["value"] for c in observed_cells), default=0),
             "max_hhe_value": max((c["hhe_total"] for c in observed_cells), default=0),
             "cells": cells, "previous_month_context": previous_context,
-            "climatology": distributions, "annual_series": annual,
+            "climatology": distributions, "reference_history": reference_history, "annual_series": annual,
             "dekadal_profile": profile, "phenology": phenology, "focus_comparison": focus,
             "coverage_note": "Recorded detections do not establish complete observation coverage or absence of fire.",
             "robust_scale_definition": "max(0.7413 * IQR, 0.5, 0.18 * median); demo heuristic",

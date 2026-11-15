@@ -181,8 +181,8 @@ def box_geometry(west: float, east: float, south: float, north: float) -> dict[s
     polygons = []
     left = west
     while left < east - EPSILON:
-        right = min(east, left + 90, 180 if left < 180 else 360)
-        offset = 360 if left >= 180 else 0
+        offset = 360 * math.floor((left + 180) / 360)
+        right = min(east, left + 90, offset + 180)
         a, b = left - offset, right - offset
         polygons.append([[[a, south], [b, south], [b, north], [a, north], [a, south]]])
         left = right
@@ -226,9 +226,12 @@ def normalize_geometry(value: Any, *, radius_km: float = 60) -> dict[str, Any]:
         if not isinstance(item, dict):
             raise ValueError("GeoJSON must be an object")
         kind = item.get("type")
+        if not isinstance(kind, str):
+            raise ValueError("GeoJSON type must be a string")
         if kind == "Feature":
             geometry = item.get("geometry")
-            if not isinstance(geometry, dict) or geometry.get("type") not in {"Point", "Polygon", "MultiPolygon"}:
+            if (not isinstance(geometry, dict) or not isinstance(geometry.get("type"), str)
+                    or geometry.get("type") not in {"Point", "Polygon", "MultiPolygon"}):
                 raise ValueError("Feature geometry must be a supported geometry object")
             extract(geometry)
         elif kind == "FeatureCollection":
