@@ -15,6 +15,13 @@ Schema Manifesto, and Trap Bench.
 
 ## Current phase
 
+The user approved a second judging-evidence design on November 15, 2026 for
+land/forest managers, with an internal 23:00 Vietnam deadline. It adds an actual
+FIRMS study rectangle, fixed training/held-out assessment, guided manager brief
+and a local judging/source packet. See [approved design](docs/superpowers/specs/2026-11-15-judging-evidence-design.md)
+and [current evidence](docs/judging/evidence.md). The earlier baseline below is
+historical; current verification is recorded separately in that judging packet.
+
 The approved continuation is complete on `codex/firetrace-upgrade`. Validated
 inputs, scientific/coverage semantics, immutable workflows, receipts/exports,
 modeled passes and the tokenized five-view dashboard are implemented. The fresh
@@ -29,6 +36,10 @@ Antigravity supplied the recovered planning/surveys; implementation continued he
 - Preserve the current stack and five-view application.
 - Keep a reliable offline demonstration with clearly labeled generated presets
   and approximate satellite-pass estimates. Accept real FIRMS CSV uploads.
+- Keep NASA case archive availability distinct from complete observation coverage;
+  fit both factors only on 2013–2020 and report 2021–2024 results without retuning.
+- Prepare local source/evidence only. Publication, repository visibility and
+  deployment are separate owner-authorized steps.
 - Use original core logic. External documentation may inform implementation;
   existing projects are not a source of copied core code.
 - Prioritize scientific meaning and provenance, then reliability and

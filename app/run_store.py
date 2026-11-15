@@ -2,11 +2,12 @@
 from __future__ import annotations
 
 import copy
+import hashlib
 import json
 from collections import OrderedDict
 from threading import RLock
 
-from app.canonical import sha256_of
+from app.canonical import canonical_json
 
 
 class SnapshotLimit(ValueError):
@@ -36,12 +37,20 @@ class RunStore:
             return len(self._values)
 
     def put(self, data):
-        snapshot = copy.deepcopy(data)
-        size = len(json.dumps(snapshot, ensure_ascii=False, allow_nan=False,
-                              separators=(",", ":")).encode("utf-8"))
+        snapshot = {}
+        for k, v in data.items():
+            if k.startswith("_"):
+                snapshot[k] = list(v) if isinstance(v, list) else v
+            else:
+                snapshot[k] = copy.deepcopy(v)
+        public_data = {k: v for k, v in snapshot.items() if not k.startswith("_")}
+        canon_str = canonical_json(public_data)
+        canonical_bytes = canon_str.encode("utf-8")
+        size = len(canonical_bytes)
         if size > self.max_bytes:
             raise SnapshotLimit("Analysis exceeds the in-memory snapshot limit; use a smaller archive or AOI")
-        identity, digest = snapshot["run_id"], sha256_of(snapshot)
+        identity = snapshot["run_id"]
+        digest = hashlib.sha256(canonical_bytes).hexdigest()
         with self._lock:
             existing = self._values.get(identity)
             if existing is not None:
@@ -61,4 +70,10 @@ class RunStore:
             if found is None:
                 return None
             self._values.move_to_end(identity)
-            return copy.deepcopy(found[0])
+            result = {}
+            for k, v in found[0].items():
+                if k.startswith("_"):
+                    result[k] = list(v) if isinstance(v, list) else v
+                else:
+                    result[k] = copy.deepcopy(v)
+            return result

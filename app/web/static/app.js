@@ -20,6 +20,8 @@ const downloadPaths = {
   "dl-ics": (id) => "/api/export/" + id + "/calendar.ics",
   "dl-receipt": (id) => "/runs/" + id + "/receipt",
   "dl-package": (id) => "/runs/" + id + "/package",
+  "dl-brief-receipt": (id) => "/runs/" + id + "/receipt",
+  "dl-brief-package": (id) => "/runs/" + id + "/package",
 };
 
 async function apiJSON(url, options = {}) {
@@ -113,7 +115,7 @@ function syncForm(run) {
   })) $(id).value = value;
   $("in-name").value = "";
   $("in-name").disabled = true;
-  $("selection-help").textContent = aoi.source_kind === "uploaded_csv" ?
+  $("selection-help").textContent = ["uploaded_csv", "nasa_firms_archive"].includes(aoi.source_kind) ?
     "Period, confidence and audience changes retain this upload and its full geometry. Coordinates or new geometry create generated demo data." :
     "Form updates retain the stored selection. Edited coordinates create a new approximate rectangular demo region.";
   for (const button of document.querySelectorAll(".preset-pill")) {
@@ -216,6 +218,13 @@ function choosePreset(aoi) {
     year_start: 2000, year_end: 2026, persona: $("persona-select").value || "responder", confidence_min: $("in-conf").value, mode: "harmonized" });
 }
 
+function chooseCase(caseId = "central-highlands") {
+  state.calendarScroll = null;
+  return requestRun("/api/case-studies/" + encodeURIComponent(caseId) + "/analyze",
+    { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" },
+    "Reading pinned NASA FIRMS records…", () => chooseCase(caseId));
+}
+
 function markCoordinates() {
   if (!state.geometryDirty) $("in-name").value = "";
   state.geometryDirty = true;
@@ -301,6 +310,11 @@ async function runBench() {
 }
 
 function wireEvents() {
+  $("btn-real-case").addEventListener("click", () => chooseCase());
+  $("btn-guide-source").addEventListener("click", () => {
+    $("selection-panel").open = true;
+    $("selection-panel").querySelector("summary").focus();
+  });
   window.addEventListener("hashchange", route);
   document.addEventListener('keydown', (event) => {
     if (event.key === 'Escape' && state.draw.active) {

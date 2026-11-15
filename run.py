@@ -12,6 +12,7 @@ from dotenv import load_dotenv
 from app.agents import PERSONAS, run_investigation
 from app.datasets import AOIS, MAX_CSV_BYTES, parse_uploaded_csv
 from app.receipt import build_receipt, package_zip
+from app.case_studies import run_case_study
 
 
 def _read_input(path, limit):
@@ -30,6 +31,7 @@ def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description="FireTrace: transparent offline fire-regime demonstration")
     selection = parser.add_mutually_exclusive_group()
     selection.add_argument("--aoi", choices=sorted(AOIS), help="Analyze a generated preset")
+    selection.add_argument("--case-study", choices=["central-highlands"], help="Analyze the pinned actual NASA FIRMS case")
     selection.add_argument("--csv", help="Analyze uploaded FIRMS-shaped detections")
     selection.add_argument("--geojson", help="Generate a demo inside a GeoJSON file")
     parser.add_argument("--lat", type=float)
@@ -41,8 +43,8 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--year-start", type=int)
     parser.add_argument("--year-end", type=int)
     parser.add_argument("--mode", choices=["harmonized", "raw"], default="harmonized")
-    parser.add_argument("--confidence-min", choices=["low", "nominal", "high"], default="low")
-    parser.add_argument("--persona", choices=sorted(PERSONAS), default="responder")
+    parser.add_argument("--confidence-min", choices=["low", "nominal", "high"])
+    parser.add_argument("--persona", choices=sorted(PERSONAS))
     parser.add_argument("--no-flare-guard", action="store_true", help="Include supplied non-vegetation types")
     parser.add_argument("--reference-time", help="Explicit ISO snapshot/pass reference with UTC offset")
     parser.add_argument("--output", help="Write public analysis JSON to this path")
@@ -51,10 +53,10 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--port", type=int, default=os.environ.get("PORT", "8000"))
     args = parser.parse_args(argv)
     point = args.lat is not None or args.lon is not None
-    selected = args.aoi or args.csv or args.geojson or point
+    selected = args.aoi or args.case_study or args.csv or args.geojson or point
     if point and (args.lat is None or args.lon is None):
         parser.error("--lat and --lon must be supplied together")
-    if point and (args.aoi or args.csv or args.geojson):
+    if point and (args.aoi or args.case_study or args.csv or args.geojson):
         parser.error("Choose a point or one of --aoi, --csv, --geojson")
     if not selected:
         if any(value is not None for value in (args.year, args.month, args.year_start, args.year_end,
@@ -66,8 +68,11 @@ def main(argv: list[str]) -> int:
         uvicorn.run("app.api:app", host="0.0.0.0", port=args.port)
         return 0
 
-    request = {"mode": args.mode, "confidence_min": args.confidence_min,
-               "persona": args.persona, "flare_guard": not args.no_flare_guard}
+    request = {"mode": args.mode, "flare_guard": not args.no_flare_guard}
+    if args.confidence_min is not None:
+        request["confidence_min"] = args.confidence_min
+    if args.persona is not None:
+        request["persona"] = args.persona
     for argument, key in (("year", "focus_year"), ("month", "focus_month"),
                           ("year_start", "year_start"), ("year_end", "year_end"),
                           ("reference_time", "reference_time"), ("name", "name")):
@@ -76,7 +81,9 @@ def main(argv: list[str]) -> int:
             request[key] = value
     records = source_aoi = None
     try:
-        if args.aoi:
+        if args.case_study:
+            output = run_case_study(args.case_study, request)
+        elif args.aoi:
             request["aoi_id"] = args.aoi
         elif args.csv:
             records, source_aoi = parse_uploaded_csv(_read_input(args.csv, MAX_CSV_BYTES), name=args.name or Path(args.csv).name)
@@ -85,7 +92,8 @@ def main(argv: list[str]) -> int:
             request["radius_km"] = args.radius_km
         else:
             request.update(lat=args.lat, lon=args.lon, radius_km=args.radius_km)
-        output = run_investigation(request, raw_records_override=records, source_aoi=source_aoi)
+        if not args.case_study:
+            output = run_investigation(request, raw_records_override=records, source_aoi=source_aoi)
         public = {key: value for key, value in output.items() if not key.startswith("_")}
         text = json.dumps(public, ensure_ascii=False, allow_nan=False, indent=2)
         if args.output:

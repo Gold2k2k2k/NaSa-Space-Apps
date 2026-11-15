@@ -52,3 +52,23 @@ codes are rejected. Valid zero coordinates and zero FRP remain zero.
 
 An accepted hotspot-only CSV does not by itself prove complete observation
 coverage, wildfire cause, burned area, or an absence of fire in missing months.
+
+## Bundled actual NASA case
+
+`GET /api/case-studies` lists the whitelisted case; use
+`POST /api/case-studies/central-highlands/analyze` with an object containing only
+analysis options, or `python run.py --case-study central-highlands`. Geometry and
+unknown fields on that route are rejected. The defaults are 2001–2024, focus
+2024, nominal-or-high confidence, non-vegetation guard on and land-manager
+audience. The initial month is the largest defined 2001–2020 reference median,
+with earliest-month tie breaking; January is a navigation fallback if no median
+exists. It is never selected by searching held-out anomalies.
+
+The [manifest](../app/data/central-highlands.manifest.json) identifies the exact
+37 NASA originals and byte-preserving subset transformation. The loader checks
+pinned manifest/data hashes offline and returns fresh records/geometry. Its
+16,258 records lie within `[107.8,12.5,108.5,13.1]`, a study rectangle rather than
+an administrative, protected-area or verified forest boundary. Runtime analysis
+does not need the ignored research cache or network. Rebuild originals explicitly
+with `python scripts/build_firms_case.py --cache-dir <originals> --download --check`;
+omit `--download` for an offline check. Changed pinned originals are rejected.

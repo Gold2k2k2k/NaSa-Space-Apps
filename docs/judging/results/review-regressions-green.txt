@@ -1,0 +1,9 @@
+test_crlf_git_checkout_can_load_the_pinned_case (tests.test_judging_case_data.TestJudgingCaseData.test_crlf_git_checkout_can_load_the_pinned_case) ... ok
+test_receipt_links_manifest_model_and_evaluation_and_zip_verifies (tests.test_judging_workflows.TestJudgingWorkflows.test_receipt_links_manifest_model_and_evaluation_and_zip_verifies) ... ok
+test_20_upload_options_personas_and_all_six_downloads (tests.test_browser_showcase.TestBrowserShowcase.test_20_upload_options_personas_and_all_six_downloads) ... ok
+test_tracked_source_snapshot_is_repeatable_and_excludes_secrets (tests.test_judging_packet.TestJudgingPacket.test_tracked_source_snapshot_is_repeatable_and_excludes_secrets) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 27.498s
+
+OK

@@ -194,6 +194,8 @@ Positive matched MODIS/VIIRS months, February 2012..December 2024
 
 | Field | Meaning |
 | --- | --- |
+| `calibration_model` | Applied occupancy and independently fitted FRP factors; fixed temporal policy, training-input digest, filter profile and model identity |
+| `model_evaluation` | Matching applied factors assessed separately on training and held-out periods; paired occupancy and power counts, exclusions and nullable descriptive agreement; not ground truth |
 | `aoi_id` | AOI, original demo method version and February 2012..December 2024 overlap |
 | `method_version` | AOI, original demo method version and February 2012..December 2024 overlap |
 | `overlap_years` | AOI, original demo method version and February 2012..December 2024 overlap |

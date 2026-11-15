@@ -1,0 +1,74 @@
+{
+  "policy": {
+    "name": "central-highlands-2013-2020-v1",
+    "training_years": [
+      2013,
+      2020
+    ],
+    "evaluation_years": [
+      2021,
+      2024
+    ],
+    "training_start_month": 1,
+    "held_out": true
+  },
+  "model_id": "model-b6b596c31c924497f872a6fb",
+  "applied_kappa": 0.1825270996234471,
+  "applied_frp_ratio": 1.7570529471092355,
+  "training": {
+    "occupancy": {
+      "pairs": 73,
+      "unpaired_recorded_months": 19,
+      "agreement": {
+        "sample_count": 73,
+        "r2": 0.855524,
+        "efficiency": 0.837559,
+        "rmse": 5.669551,
+        "mean_bias": -0.0
+      }
+    },
+    "power": {
+      "pairs": 130,
+      "unpaired_or_nonpositive_windows": 6487,
+      "agreement": {
+        "sample_count": 130,
+        "r2": 0.062509,
+        "efficiency": -0.809132,
+        "rmse": 25.363608,
+        "mean_bias": 0.0
+      }
+    },
+    "excluded_source_type_windows": 38
+  },
+  "held_out": {
+    "occupancy": {
+      "pairs": 43,
+      "unpaired_recorded_months": 4,
+      "agreement": {
+        "sample_count": 43,
+        "r2": 0.841172,
+        "efficiency": 0.786767,
+        "rmse": 3.927599,
+        "mean_bias": -1.923674
+      }
+    },
+    "power": {
+      "pairs": 35,
+      "unpaired_or_nonpositive_windows": 1851,
+      "agreement": {
+        "sample_count": 35,
+        "r2": 0.101068,
+        "efficiency": -5.058486,
+        "rmse": 45.475956,
+        "mean_bias": 7.716203
+      }
+    },
+    "excluded_source_type_windows": 44
+  },
+  "status": "descriptive_held_out_sensor_agreement",
+  "limitations": [
+    "Agreement between sensors is not independent ground truth or burned-area validation.",
+    "Only positive paired observations enter agreement; omitted and missing observations are not zeros.",
+    "Occupancy is a weighted cell index. FRP is instantaneous MW, not energy or burned area."
+  ]
+}

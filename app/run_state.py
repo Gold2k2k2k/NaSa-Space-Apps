@@ -5,7 +5,7 @@ import math
 from pathlib import Path
 
 from app.canonical import sha256_of
-from app.stats import empirical_percentile, ols_slope_per_decade, theil_sen_per_decade
+from app.stats import empirical_percentile, ols_slope_per_decade, theil_sen_per_decade, quantile
 
 DEMO_REFERENCE = "2026-11-14T00:00:00Z"
 CALCULATION_VERSION = "firetrace-demo-v2"
@@ -13,8 +13,8 @@ CALCULATION_VERSION = "firetrace-demo-v2"
 
 def calculation_digest():
     root = Path(__file__).resolve().parent
-    names = ("agents.py", "calendar_engine.py", "canonical.py", "datasets.py", "evidence.py",
-             "geo_passes.py", "geometry.py", "harmonize.py", "models.py", "observations.py",
+    names = ("agents.py", "calendar_engine.py", "calibration.py", "case_studies.py", "canonical.py", "datasets.py", "evidence.py",
+             "geo_passes.py", "geometry.py", "harmonize.py", "manager_brief.py", "models.py", "observations.py",
              "rules.py", "run_state.py", "satellites.py", "schema_mapping.py", "stats.py")
     return sha256_of({name: (root / name).read_text(encoding="utf-8-sig") for name in names})
 
@@ -37,9 +37,8 @@ def apply_calendar_scenario(calendar):
     if old is None or target is None:
         raise ValueError("A median scenario requires an observed focus period and reference median")
     year, month = focus["year"], focus["month"]
-    history = [c["value"] for c in calendar["cells"] if c["month"] == month
-               and 2001 <= c["year"] <= 2020 and c["is_observed"]]
-    percentile = empirical_percentile(history, target)
+    history = next((r["values"] for r in calendar["reference_history"] if r["month"] == month), [])
+    percentile = empirical_percentile(history, quantile(history, .5))
     for cell in calendar["cells"]:
         if (cell["year"], cell["month"]) == (year, month):
             cell.update(observed_value=old, value=target, value_is_counterfactual=True,

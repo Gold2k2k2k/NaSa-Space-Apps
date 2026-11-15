@@ -7,6 +7,7 @@ verdict, and computes live counterfactual What-If flips.
 from __future__ import annotations
 
 import copy
+import hashlib
 import json
 from datetime import datetime, timezone
 from typing import Any, Optional
@@ -22,6 +23,22 @@ from app.run_state import (CALCULATION_VERSION, DEMO_REFERENCE, apply_calendar_s
                            calculation_digest, content_run_id)
 from app.canonical import canonical_json
 from app.geo_passes import predict_passes
+
+_RAW_ROW_CANON_CACHE: dict[int, tuple[dict, str]] = {}
+_RAW_ROW_KEY_CACHE: dict[tuple, str] = {}
+
+
+def _get_raw_row_canon(row: dict) -> str:
+    from app.observations import _raw_tuple_key
+    key = _raw_tuple_key(row)
+    cached_key = _RAW_ROW_KEY_CACHE.get(key)
+    if cached_key is not None:
+        return cached_key
+    val = canonical_json(row)
+    if len(_RAW_ROW_KEY_CACHE) > 200000:
+        _RAW_ROW_KEY_CACHE.clear()
+    _RAW_ROW_KEY_CACHE[key] = val
+    return val
 
 PERSONAS = {
     "responder": "Early Warning & Emergency Responder",
@@ -133,6 +150,150 @@ def _persona_briefing(persona, aoi, calendar, decision, audit):
             "actions": details[p_key], "limitation": common}
 
 
+def _raw_record_sort_key(r: dict[str, Any]) -> tuple:
+    return (
+        r.get("acq_date") or "",
+        r.get("acq_time") or "",
+        r.get("latitude") or r.get("lat") or "",
+        r.get("longitude") or r.get("lon") or "",
+        r.get("instrument") or "",
+        r.get("satellite") or "",
+        r.get("confidence") or "",
+        r.get("frp") or "",
+        r.get("daynight") or "",
+    )
+
+
+def _harmonize_counterfactual_flares(harmonized: dict[str, Any], aoi: dict[str, Any], alt_flare_guard: bool, confidence_min: str) -> dict[str, Any]:
+    import math
+    from collections import defaultdict
+    from app.harmonize import DEFAULT_KAPPA, DEFAULT_FRP_RATIO, _sum_months, _transition_audit
+    from app.calibration import resolve_calibration_policy, calibration_period, build_model_evaluation
+    from app.stats import calibration_agreement
+
+    base_events = harmonized["hotspots"]
+    inferred = set(harmonized["persistent_inferred_cells"])
+    known_static = set(harmonized["persistent_flare_cells"])
+    coverage = harmonized["observation_coverage"]
+    quality = harmonized["quality"]
+    policy = resolve_calibration_policy(aoi)
+    base_audit = harmonized["sensor_calibration_audit"]
+
+    events = [dict(e) for e in base_events]
+    for event in events:
+        event["include_in_calendar"] = not (alt_flare_guard and event["source_type"] != 0)
+
+    monthly_modis = _sum_months(events, "modis_w")
+    monthly_viirs = _sum_months(events, "viirs_w")
+    overlap = sorted(month for month in monthly_modis.keys() & monthly_viirs.keys()
+                     if calibration_period(*month, policy) == "training"
+                     and monthly_modis[month] > 0 and monthly_viirs[month] > 0)
+    calibrated = len(overlap) >= 3
+    kappa = (math.fsum(monthly_modis[m] for m in overlap) /
+             math.fsum(monthly_viirs[m] for m in overlap)) if calibrated else DEFAULT_KAPPA
+    agreement = calibration_agreement([monthly_modis[m] for m in overlap],
+                                      [kappa * monthly_viirs[m] for m in overlap])
+    eras = []
+    for start, end in ((2012, 2017), (2018, 2023), (2024, 2024)):
+        months = [m for m in overlap if start <= m[0] <= end]
+        ratio = (math.fsum(monthly_modis[m] for m in months) /
+                 math.fsum(monthly_viirs[m] for m in months)) if len(months) >= 3 else None
+        eras.append({"years": f"{start}-{end}", "overlap_months": len(months),
+                     "empirical_kappa": round(ratio, 8) if ratio is not None else None,
+                     "applied": False, "purpose": "diagnostic comparison with the pooled bridge",
+                     "agreement_at_pooled_kappa": calibration_agreement(
+                         [monthly_modis[m] for m in months], [kappa * monthly_viirs[m] for m in months])})
+    matched_frp = [e for e in events if e["include_in_calendar"]
+                   and calibration_period(e["year"], e["month"], policy) == "training"
+                   and e["modis_frp_mw"] is not None and e["modis_frp_mw"] > 0
+                   and e["viirs_frp_mw"] is not None and e["viirs_frp_mw"] > 0]
+    frp_ratio = (math.fsum(e["modis_frp_mw"] for e in matched_frp) /
+                 math.fsum(e["viirs_frp_mw"] for e in matched_frp)) if len(matched_frp) >= 3 else DEFAULT_FRP_RATIO
+
+    training_rows_hash = base_audit["calibration_model"]["training_rows_sha256"]
+    model = {"policy": policy, "kappa": kappa, "frp_ratio": frp_ratio,
+             "occupancy_basis": "empirical_monthly_sum_ratio" if calibrated else "assumed_demo_kappa_insufficient_overlap",
+             "frp_basis": "matched_window_sum_ratio" if len(matched_frp) >= 3 else "assumed_identity_insufficient_pairs",
+             "training_month_pairs": len(overlap), "training_power_pairs": len(matched_frp),
+             "training_rows_sha256": training_rows_hash,
+             "filter_profile": {"confidence_min": confidence_min, "exclude_static_flares": alt_flare_guard}}
+    model["model_id"] = "model-" + sha256_of(model)[:24]
+    evaluation = build_model_evaluation(events, monthly_modis, monthly_viirs, policy, model)
+
+    for event in events:
+        month = event["year"], event["month"]
+        blend = 0.5 if monthly_modis.get(month, 0) > 0 and monthly_viirs.get(month, 0) > 0 else 1.0
+        event["hhe"] = round(blend * (event["modis_w"] + kappa * event["viirs_w"]), 8) if event["include_in_calendar"] else 0.0
+        powers = ([event["modis_frp_mw"]] if event["modis_frp_mw"] is not None else [])
+        if event["viirs_frp_mw"] is not None:
+            powers.append(frp_ratio * event["viirs_frp_mw"])
+        event["frp_is_missing"] = not powers
+        event["hfre_mw"] = round(math.fsum(powers) / len(powers), 6) if powers else None
+
+    grouped = defaultdict(list)
+    for event in events:
+        grouped[event["year"]].append(event)
+    by_year = {}
+    for year, values in sorted(grouped.items()):
+        included = [e for e in values if e["include_in_calendar"]]
+        powers = [e["hfre_mw"] for e in included if e["hfre_mw"] is not None]
+        by_year[year] = {
+            "year": year, "raw_modis": sum(e["raw_modis"] for e in included),
+            "raw_viirs": sum(e["raw_viirs"] for e in included),
+            "raw_total": sum(e["raw_detections"] for e in included),
+            "raw_flares": sum(e["raw_detections"] for e in values if e["source_type"] != 0),
+            "hhe_total": round(math.fsum(e["hhe"] for e in included), 6),
+            "frp_total_mw": round(math.fsum(powers), 6) if powers else None,
+            "cell_events": len(included),
+        }
+    covered = {tuple(month) for month in coverage["complete_months"]}
+    transitions = [_transition_audit(by_year, covered, year) for year in (2012, 2018)]
+    categories = defaultdict(int)
+    for event in events:
+        categories[event["fire_category"]] += event["raw_detections"]
+    non_vegetation = sum(e["raw_detections"] for e in events if e["source_type"] != 0)
+    raw_modis = sum(e["raw_modis"] for e in events if e["include_in_calendar"] and (e["year"], e["month"]) in overlap)
+    raw_viirs = sum(e["raw_viirs"] for e in events if e["include_in_calendar"] and (e["year"], e["month"]) in overlap)
+    denominator = sum(base_audit["category_counts"].values())
+    audit = {
+        "aoi_id": aoi["aoi_id"],
+        "method_version": "occupancy-windows-v2",
+        "calibration_model": model, "model_evaluation": evaluation,
+        "overlap_years": f"{overlap[0][0]}-{overlap[-1][0]}" if overlap else "none",
+        "overlap_months_count": len(overlap), "calibration_valid": calibrated,
+        "calibration_basis": "empirical_monthly_sum_ratio" if calibrated else "assumed_demo_kappa_insufficient_overlap",
+        "raw_viirs_to_modis_ratio": round(raw_viirs / raw_modis, 6) if raw_modis else None,
+        "calibrated_kappa": round(kappa, 8), "frp_conversion_ratio": round(frp_ratio, 8),
+        "frp_calibration_basis": "matched_window_sum_ratio" if len(matched_frp) >= 3 else "assumed_identity_insufficient_pairs",
+        "matched_frp_windows": len(matched_frp),
+        "era_diagnostics": eras,
+        "bridge_r2": agreement["r2"], "bridge_efficiency": agreement["efficiency"],
+        "bridge_rmse": agreement["rmse"], "bridge_mean_bias": agreement["mean_bias"],
+        "overpass_duplicates_removed": base_audit["overpass_duplicates_removed"],
+        "exact_or_revised_duplicate_rows": sum(e["duplicate_observation_rows"] for e in events),
+        "raw_step_jump_2012_pct": transitions[0]["raw_step_pct"],
+        "harmonized_step_diff_2012_pct": transitions[0]["harmonized_step_pct"],
+        "bias_reduction_pct": transitions[0]["bias_reduction_pct"],
+        "transition_audits": transitions,
+        "total_raw_detections": denominator,
+        "total_harmonized_events": sum(e["include_in_calendar"] for e in events),
+        "static_flare_detections": non_vegetation,
+        "flare_contamination_share": round(non_vegetation / denominator, 6) if denominator else 0,
+        "non_vegetation_share": round(non_vegetation / denominator, 6) if denominator else 0,
+        "wildfire_share": round(categories["VEGETATION_THERMAL"] / denominator, 6) if denominator else 0,
+        "agricultural_share": round(categories["LOW_FRP_DAYTIME"] / denominator, 6) if denominator else 0,
+        "category_counts": dict(sorted(categories.items())),
+        "classification_limit": "FIRMS types and thermal patterns do not establish wildfire, agricultural burning, or industrial cause.",
+        "skipped_invalid_rows": quality["invalid_rows"], "quality": quality,
+        "exclude_static_flares": alt_flare_guard,
+        "window_minutes": 60, "target_grid_metres": 1000,
+    }
+    return {"hotspots": events, "annual_sensor_breakdown": list(by_year.values()),
+            "sensor_calibration_audit": audit, "persistent_flare_cells": sorted(known_static),
+            "persistent_inferred_cells": sorted(inferred), "observation_coverage": coverage,
+            "quality": quality}
+
+
 def _compute_what_ifs(
     harmonized: dict[str, Any],
     aoi: dict[str, Any],
@@ -152,9 +313,9 @@ def _compute_what_ifs(
     # Counterfactual 2: toggle flare_guard (only needs re-harmonizing when flares exist in the AOI)
     alt_flare_guard = not bool(options.get("flare_guard", True))
     if harmonized["sensor_calibration_audit"]["static_flare_detections"] > 0:
-        alt_harm_flare = harmonize_records(
-            raw_records, aoi,
-            exclude_static_flares=alt_flare_guard,
+        alt_harm_flare = _harmonize_counterfactual_flares(
+            harmonized, aoi,
+            alt_flare_guard=alt_flare_guard,
             confidence_min=options.get("confidence_min", "low"),
         )
         alt_cal_flare = build_burning_calendar(
@@ -261,10 +422,11 @@ def run_investigation(
         raise ValueError("Modeled reference years must be between 2000 and 2100")
     if raw_records_override is not None and (not isinstance(raw_records_override, list) or (len(raw_records_override) > 25000 and aoi["source_kind"] != "generated_demo")):
         raise ValueError("Provided records must be an array of at most 25,000 rows")
-    raw_records = copy.deepcopy(raw_records_override) if raw_records_override is not None else generate_firms_records(aoi, year_start=2000, year_end=2026)
-    raw_records.sort(key=canonical_json)
+    raw_records = [dict(r) for r in raw_records_override] if raw_records_override is not None else generate_firms_records(aoi, year_start=2000, year_end=2026)
+    raw_records.sort(key=_raw_record_sort_key)
     input_summary = summarize_inputs(raw_records)
-    source_digest = sha256_of(sorted(raw_records, key=canonical_json))
+    _raw_canon_bytes = ("[" + ",".join(_get_raw_row_canon(r) for r in raw_records) + "]").encode("utf-8")
+    source_digest = hashlib.sha256(_raw_canon_bytes).hexdigest()
     calculation = calculation_digest()
     derived_id = content_run_id(aoi, options, input_summary, source_digest, reference, scenario, lineage, calculation)
     if run_id is not None and run_id != derived_id:
@@ -362,7 +524,7 @@ def run_investigation(
     for step_record in trace:
         step_record["timestamp"] = reference
 
-    return {
+    result = {
         "run_id": run_id,
         "status": "success",
         "reference_time": reference,
@@ -370,9 +532,12 @@ def run_investigation(
         "calculation_version": CALCULATION_VERSION,
         "calculation_sha256": calculation,
         "provenance": {"source_kind": aoi["source_kind"], "source_records_sha256": source_digest,
+                       "case_id": aoi.get("case_id"), "subset_sha256": aoi.get("subset_sha256"),
+                       "source_manifest_sha256": aoi.get("source_manifest_sha256"),
                        "fixture_version": "generated-demo-v2" if aoi["source_kind"] == "generated_demo" else None,
                        "coverage_claim": "simulated_complete_periods" if aoi["source_kind"] == "generated_demo" else "records_only",
                        "source_authentication": "not established"},
+        "source_manifest": copy.deepcopy(aoi.get("source_manifest")),
         "ingestion": copy.deepcopy(aoi.get("ingestion")),
         "lineage": copy.deepcopy(lineage),
         "counterfactual": copy.deepcopy(active_calendar.get("counterfactual")),
@@ -394,6 +559,9 @@ def run_investigation(
             "selection_model": aoi.get("selection_model", "preset_box"),
             "selection_notes": aoi.get("selection_notes", []),
             "source_kind": aoi["source_kind"],
+            "case_id": aoi.get("case_id"), "subset_sha256": aoi.get("subset_sha256"),
+            "source_manifest_sha256": aoi.get("source_manifest_sha256"),
+            "calibration_policy": copy.deepcopy(aoi.get("calibration_policy")),
             "complete_periods": aoi["complete_periods"],
         },
         "options": options,
@@ -421,6 +589,9 @@ def run_investigation(
         "_input_summary": input_summary,
         "_persistent_cells_count": len(harmonized["persistent_flare_cells"]),
     }
+    from app.manager_brief import build_manager_brief
+    result["manager_brief"] = build_manager_brief(result)
+    return result
 
 
 def apply_what_if(run_state: dict[str, Any], field: str, value: Any) -> dict[str, Any]:

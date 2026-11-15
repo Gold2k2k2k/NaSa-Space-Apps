@@ -17,8 +17,19 @@ Verification checks the receipt checksum, required query identities and counts,
 row hashes, query/evidence relationships, calendar digest and summary, and the
 re-derived rules version, verdict, deciding rule, findings, and verdict seal.
 JSON round-tripping preserves the canonical representation.
+For v2 calendars, verification also requires exactly one cell for every year/month
+in the declared window, matching analysis options and AOI. Focus measurements and
+reference fields must match the selected cell. Annual totals, observed/complete
+support, extrema, peak records and complete-year trends are checked against the
+cells rather than trusted because their checksum is valid. Contradictory or
+missing calendar evidence is rejected even after unsigned hashes are recomputed.
 New v2 records also bind source/ingestion metadata, calculation identity,
 reference time, modeled passes, lineage and any explicitly hypothetical metric.
+New case records also bind the pinned source manifest/subset identities, fixed
+calibration policy and matching training/held-out report. The verifier checks
+their internal relationships and re-derives the manager brief from the same
+snapshot. The manifest anchor belongs to the matching bundled code; it is not a
+NASA signature. The complete reference history remains in calendar evidence.
 
 The input summary counts sensors from normalized row values. A combined CSV
 containing both `brightness` and `bright_ti4` columns does not turn VIIRS rows
@@ -36,6 +47,10 @@ third-party packages. Replaying the whole analysis additionally needs the
 project's declared runtime dependencies. Source rows are not original CSV bytes.
 CSV ingestion retains only accepted rows and reports rejections in metadata;
 direct engine input can retain invalid rows, counted separately by normalization.
+Actual-case ZIPs additionally contain `case_manifest.json` and
+`model_evaluation.json`. The manager brief is retained in evidence and receipt.
+Replay from `source_records.json` and `analysis_inputs.json` uses the included
+full AOI/policy; it does not need to load the curated CSV again.
 
 Version 1 receipts remain readable with a narrower verification scope. They did
 not contain full calendar cells or independent input summaries, so those missing
@@ -47,6 +62,10 @@ preceding-month context bound in calendar, summary and Q7 even outside the selec
 window. Earlier interim v2 `.2` receipts require their matching bundled verifier
 and sources; this verifier accepts current `.3` and frozen legacy `.1` rules.
 Preserve matching code with retained evidence.
+Earlier v2 records without the new model, case manifest or manager brief retain
+their existing narrower relationships; those fields cannot be reconstructed
+from such a receipt alone. Optional extension checks apply when fields exist,
+and the NASA archive source kind requires its pinned case manifest/model.
 
 These are **unsigned consistency and reproducibility records**. Hashes do not
 authenticate a NASA source, establish that input observations are true, or stop

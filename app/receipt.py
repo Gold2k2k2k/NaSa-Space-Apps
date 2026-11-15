@@ -72,7 +72,7 @@ def build_receipt(run_data: dict[str, Any]) -> dict[str, Any]:
     }
     receipt = copy.deepcopy(receipt)
     for key in ("reference_time", "calculation_version", "calculation_sha256", "provenance",
-                "ingestion", "lineage", "counterfactual", "passes"):
+                "ingestion", "lineage", "counterfactual", "passes", "source_manifest", "manager_brief"):
         if key in run_data:
             receipt[key] = copy.deepcopy(run_data[key])
     receipt["receipt_sha256"] = sha256_of(receipt)
@@ -108,6 +108,9 @@ def package_zip(run_data: dict[str, Any]) -> bytes:
         ),
     }
     project_root = Path(__file__).resolve().parent.parent
+    if run_data.get("source_manifest"):
+        members["case_manifest.json"] = json.dumps(run_data["source_manifest"], ensure_ascii=False, indent=2)
+        members["model_evaluation.json"] = json.dumps(run_data["sensor_calibration_audit"]["model_evaluation"], ensure_ascii=False, indent=2)
     members["verify.py"] = (project_root / "verify.py").read_text(encoding="utf-8-sig")
     for source in sorted((project_root / "app").glob("*.py")):
         members[f"app/{source.name}"] = source.read_text(encoding="utf-8-sig")

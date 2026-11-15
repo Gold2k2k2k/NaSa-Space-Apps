@@ -151,6 +151,84 @@ class TestBrowserShowcase(unittest.TestCase):
         for name in ("science", "inputs", "receipts", "exports"):
             self.assertEqual(self.context.request.get(self.base + "/api/methods/" + name).status, 200)
 
+    def test_70_real_case_guided_review_and_downloads(self):
+        self.open()
+        self.assertEqual(self.page.locator("#btn-real-case").count(), 1, "Actual NASA case entry is missing")
+        real = self.action(lambda: self.page.locator("#btn-real-case").click(), "/api/case-studies/")
+        self.assertEqual(real["provenance"]["source_kind"], "nasa_firms_archive")
+        self.assertIn("NASA FIRMS", self.page.locator("#source-badge").inner_text())
+        self.assertEqual(self.page.locator("#review-guide li").count(), 3)
+        for width, height in ((1440, 900), (375, 812)):
+            self.page.set_viewport_size({"width": width, "height": height})
+            for view in ("calendar", "bridge", "audit", "manifesto", "bench"):
+                self.page.locator("#tab-" + view).click()
+                self.page.locator("#view-" + view).wait_for(state="visible")
+                self.page.wait_for_timeout(180)
+                self.assertLessEqual(self.metrics()["documentWidth"], width + 1)
+                self.page.screenshot(path=str(OUT / f"nasa-{view}-{width}.png"))
+                self.artifacts.append({"case": "central-highlands", "view": view, "width": width, "run_id": real["run_id"], **self.metrics()})
+        self.page.locator("#tab-audit").click()
+        self.assertIn("coverage", self.page.locator("#manager-brief").inner_text().lower())
+        self.assertIn(real["run_id"], self.page.locator("#manager-brief").inner_text())
+        scenario = self.action(lambda: self.page.locator("#whatif-grid .sub-card").nth(2).get_by_role("button").click())
+        self.assertEqual(scenario["provenance"]["source_kind"], "nasa_firms_archive")
+        self.assertEqual(scenario["sensor_calibration_audit"]["calibration_model"], real["sensor_calibration_audit"]["calibration_model"])
+        restored = self.action(lambda: self.page.locator("#btn-clear-scenario").click())
+        changed = self.action(lambda: self.page.locator("#persona-select").select_option("scientist"))
+        self.assertEqual(changed["provenance"]["source_records_sha256"], real["provenance"]["source_records_sha256"])
+        self.page.locator("#tab-calendar").click()
+        raw = self.action(lambda: self.page.locator("#btn-toggle-mode").click())
+        self.assertEqual(raw["sensor_calibration_audit"]["calibration_model"], real["sensor_calibration_audit"]["calibration_model"])
+        self.page.locator("#selection-panel > summary").click()
+        self.page.locator("#in-y0").fill("2024")
+        self.page.locator("#in-conf").select_option("high")
+        changed = self.action(lambda: self.page.locator("#btn-analyze").click())
+        self.assertEqual(changed["provenance"]["source_kind"], "nasa_firms_archive")
+        self.assertNotEqual(changed["sensor_calibration_audit"]["calibration_model"]["model_id"], real["sensor_calibration_audit"]["calibration_model"]["model_id"])
+        self.page.locator("#tab-audit").click()
+        self.assertIn(changed["run_id"], self.page.locator("#dl-brief-package").get_attribute("href"))
+        self.page.locator("#tab-calendar").click()
+        with tempfile.TemporaryDirectory() as directory:
+            for key in ("hotspots-csv", "calendar-csv", "geojson", "ics", "receipt", "package"):
+                with self.page.expect_download() as pending:
+                    self.page.locator("#dl-" + key).click()
+                target = Path(directory) / pending.value.suggested_filename
+                pending.value.save_as(target)
+                self.assertGreater(target.stat().st_size, 100)
+                if key == "receipt":
+                    receipt = json.loads(target.read_text(encoding="utf-8"))
+                    self.assertEqual(receipt["run_id"], changed["run_id"])
+                    self.assertEqual(check_receipt(receipt)["status"], "VALID")
+                elif key == "package":
+                    with zipfile.ZipFile(target) as archive:
+                        self.assertIn("case_manifest.json", archive.namelist())
+        self.page.locator("#btn-real-case").focus()
+        self.assertEqual(self.page.locator(":focus").get_attribute("id"), "btn-real-case")
+
+    def test_80_late_case_response_cannot_replace_newer_generated_source(self):
+        self.open()
+        self.assertEqual(self.page.locator("#btn-real-case").count(), 1)
+        self.page.evaluate("""() => {
+            const native = window.fetch.bind(window); window.__caseHeld = false;
+            window.fetch = async (url, options = {}) => {
+                const response = await native(url, options);
+                if (String(url).includes('/api/case-studies/')) {
+                    window.__caseHeld = true;
+                    await new Promise(resolve => window.__releaseCase = resolve);
+                }
+                return response;
+            };
+        }""")
+        self.page.locator("#btn-real-case").click()
+        self.page.wait_for_function("window.__caseHeld", timeout=60000)
+        self.page.locator("#selection-panel > summary").click()
+        generated = self.action(lambda: self.page.locator('[data-aoi="AOI-MEK"]').click(), "/api/analyze")
+        self.page.evaluate("window.__releaseCase()")
+        self.page.wait_for_timeout(200)
+        self.assertEqual(generated["provenance"]["source_kind"], "generated_demo")
+        self.assertIn("Generated demo", self.page.locator("#source-badge").inner_text())
+        self.assertEqual(self.page.locator("#aoi-heading").inner_text(), generated["aoi"]["name"])
+
     def test_10_keyboard_ramps_motion_and_preview(self):
         self.open()
         active = self.page.locator('.cal-cell[tabindex="0"]')
@@ -194,6 +272,11 @@ class TestBrowserShowcase(unittest.TestCase):
         self.open()
         uploaded = self.action(lambda: self.page.locator("#csv-file-input").set_input_files(
             {"name": "mixed.csv", "mimeType": "text/csv", "buffer": CSV.encode()}), "/api/upload-csv")
+        self.page.locator("#tab-bridge").click()
+        self.page.locator("#model-assessment").evaluate("element => element.open = true")
+        self.assertIn("assumed identity", self.page.locator("#model-policy-note").inner_text().lower())
+        self.assertIn("positive matched training windows", self.page.locator("#model-policy-note").inner_text())
+        self.page.locator("#tab-calendar").click()
         self.assertIn("Uploaded CSV", self.page.locator("#source-badge").inner_text())
         self.assertIn("rejected 1", self.page.locator("#data-note").inner_text())
         original_geometry = uploaded["aoi"]["geometry"]
