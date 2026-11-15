@@ -1,0 +1,32 @@
+[
+  {
+    "file": "docs/judging/images/manager-brief-1440.png",
+    "sha256": "a97c05115a23c28cca29fc1aa3e079b6c041fe98a931283e2193150c00508e2d",
+    "run_id": "ft-7b337445cf811a976a93b468"
+  },
+  {
+    "file": "docs/judging/images/manager-brief-375.png",
+    "sha256": "b542e3e7cbf5351d141b98f281db1538267bbbcc1e3c649e2339905bef1227dd",
+    "run_id": "ft-7b337445cf811a976a93b468"
+  },
+  {
+    "file": "docs/judging/images/model-assessment-1440.png",
+    "sha256": "3dd43e70d8ef3a3d9df2b5de77a8b84c4a2ca2d74e1db495ac53fb69c23f50f2",
+    "run_id": "ft-7b337445cf811a976a93b468"
+  },
+  {
+    "file": "docs/judging/images/model-assessment-375.png",
+    "sha256": "70bf88c979fa0135ce9296d12f15282c64e912fd0b697057296c498ea82df693",
+    "run_id": "ft-7b337445cf811a976a93b468"
+  },
+  {
+    "file": "docs/judging/images/calendar-1440.png",
+    "sha256": "27f9e2a43ba1c39a22558197ea50305e882bcff30dea8a4fc26359675907a404",
+    "run_id": "ft-7b337445cf811a976a93b468"
+  },
+  {
+    "file": "docs/judging/images/calendar-375.png",
+    "sha256": "a7ca0f0f06ea6a37c8f6b14794428f6731fdd2708c450038c6a3326b2084ea19",
+    "run_id": "ft-7b337445cf811a976a93b468"
+  }
+]

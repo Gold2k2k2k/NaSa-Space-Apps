@@ -13,6 +13,7 @@ sys.path.insert(0, str(ROOT))
 
 from app.agents import run_investigation
 from app.receipt import build_receipt
+from app.case_studies import run_case_study
 
 
 def upload_samples():
@@ -56,6 +57,14 @@ def main():
             build_receipt(state), ensure_ascii=False, allow_nan=False, indent=2) + "\n"
     for name, contents in upload_samples().items():
         expected[ROOT / "app" / "web" / "static" / "samples" / name] = contents
+    case = run_case_study("central-highlands")
+    case_outputs = {
+        ROOT / "output_examples" / "central_highlands_receipt.json": build_receipt(case),
+        ROOT / "output_examples" / "central_highlands_evidence.json": {k: v for k, v in case.items() if not k.startswith("_")},
+        ROOT / "docs" / "judging" / "results" / "model-evaluation.json": case["sensor_calibration_audit"]["model_evaluation"],
+        ROOT / "docs" / "judging" / "results" / "manager-brief.json": case["manager_brief"],
+    }
+    expected.update({path: json.dumps(value, ensure_ascii=False, allow_nan=False, indent=2) + "\n" for path, value in case_outputs.items()})
     stale = []
     for path, contents in expected.items():
         if arguments.check:

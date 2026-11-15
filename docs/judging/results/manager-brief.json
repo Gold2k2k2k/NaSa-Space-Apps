@@ -1,0 +1,77 @@
+{
+  "run_id": "ft-7b337445cf811a976a93b468",
+  "question": "Which recorded seasonal periods deserve closer review before planning land or forest management?",
+  "extent": {
+    "name": "Central Highlands study rectangle · Vietnam",
+    "bbox": {
+      "lon_min": 107.80000000000001,
+      "lon_max": 108.5,
+      "lat_min": 12.5,
+      "lat_max": 13.1
+    },
+    "area_km2": 5063.952095,
+    "boundary_note": "Analysis extent only; not an administrative, protected-area or verified forest boundary."
+  },
+  "period": {
+    "display": "2001–2024",
+    "focus": "Feb 2024",
+    "reference": "2001-2020"
+  },
+  "source": {
+    "kind": "nasa_firms_archive",
+    "case_id": "central-highlands",
+    "subset_sha256": "5d28887cfc0e10d29facb805147b6743ca3353d30b496e3d21a59579f4380ef0",
+    "manifest_sha256": "48037a8052e187a20a879788a749d77261136f2f8407c006018deaa45f341bf8",
+    "retained_rows": 16258,
+    "origin_note": "Pinned NASA archive bytes with retrievable URLs and hashes; unsigned provenance."
+  },
+  "descriptive_periods": [
+    {
+      "month": 2,
+      "month_name": "Feb",
+      "median": 45.189569,
+      "samples": 20,
+      "complete_samples": 0
+    },
+    {
+      "month": 3,
+      "month_name": "Mar",
+      "median": 32.836906,
+      "samples": 20,
+      "complete_samples": 0
+    },
+    {
+      "month": 1,
+      "month_name": "Jan",
+      "median": 22.06949,
+      "samples": 20,
+      "complete_samples": 0
+    }
+  ],
+  "comparison": {
+    "status": "UNVERIFIABLE",
+    "metric": "weighted occupancy index (HHE)",
+    "value": 34.962541,
+    "historical_median": 45.189569,
+    "coverage": "records_only",
+    "reference_status": "recorded_samples",
+    "model_id": "model-b6b596c31c924497f872a6fb",
+    "training_years": [
+      2013,
+      2020
+    ],
+    "evaluation_years": [
+      2021,
+      2024
+    ],
+    "hypothetical": false
+  },
+  "limitations": [
+    "Unknown observation coverage prevents a verified hazard conclusion; missing months are not zero fire activity.",
+    "Recorded thermal patterns and FIRMS source types do not establish fire cause, forest loss, burned area or future risk.",
+    "The 2001–2020 reference describes available same-month samples, not a verified complete observational baseline.",
+    "Held-out sensor agreement assesses this model's consistency, not independent ground truth.",
+    "Satellite passes are approximate models; this historical study is not a live warning service."
+  ],
+  "next_review_action": "Review these periods with local incident logs, land-cover boundaries and observation-coverage evidence; retain this run's receipt and audit ZIP for that review."
+}

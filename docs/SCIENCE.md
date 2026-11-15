@@ -40,7 +40,8 @@ independently verified to represent the same physical fire.
 
 ## Bridge and diagnostics
 
-For supplied positive overlap months in February 2012–December 2024:
+For generated/default inputs, use supplied positive overlap months in February
+2012–December 2024. The actual NASA case instead fits only 2013–2020:
 
 `kappa = sum(MODIS monthly occupancy) / sum(VIIRS monthly occupancy)`.
 
@@ -51,7 +52,8 @@ with both families, `HHE = 0.5 * (M + kappa * V)`; a single-family month uses
 cell occupancy, not a count of fires or an ecological probability.
 
 Era diagnostics (2012–2017, 2018–2023, and 2024) report their own descriptive
-ratios alongside agreement at the **pooled** multiplier. They do not silently
+ratios using eligible training months alongside agreement at the applied
+multiplier. They do not silently
 change the applied multiplier. Correlation R² is distinct from agreement:
 efficiency is `1 - sum((M - kappa*V)^2) / sum((M - mean(M))^2)`. RMSE and mean
 bias retain index units. Constant or empty series have undefined metrics where
@@ -68,6 +70,30 @@ and after the transition. Missing years or zero reference totals produce null
 results. Reduction is `100 * (1 - abs(harmonized change) / abs(raw change))`;
 it can be negative and is undefined when the raw change is zero. This comparison
 cannot distinguish physical changes from sensor changes.
+
+### Actual NASA case: temporal separation and unfavorable results
+
+The bundled Central Highlands rectangle uses MODIS 2001–2024 and S-NPP VIIRS
+2012–2024 from 37 pinned NASA annual files. Both occupancy κ and the independent
+FRP ratio use only 2013–2020. Before window construction, rows are partitioned
+into training, held-out 2021–2024 and outside periods, preventing cross-midnight
+boundary windows from leaking future power or occupancy into training. Models
+record a training-row digest, filter profile, counts, assumptions and identity.
+Display/focus/persona/mode/median changes retain the factors; confidence/guard
+changes refit their training profile only.
+
+The matching `model_evaluation` reports training and held-out occupancy/power
+agreement separately, including paired counts, exclusions and undefined metrics.
+Only positive paired months/windows enter these descriptive comparisons. Neither
+sensor is independent ground truth. At nominal confidence with guard on, held-out
+FRP efficiency is −5.058486 on 35 pairs: poor agreement, not a successful power
+validation. See [measured results and limits](judging/evidence.md).
+
+The 2001–2020 reference retains all available same-month samples independently
+of the selected display years. Median scenarios use that unrounded reference for
+empirical midrank, preserving asymmetric ties and avoiding display-rounding drift.
+No case period is declared complete merely because an annual archive file exists.
+The verified-hazard conclusion therefore remains UNVERIFIABLE.
 
 ## Source types and calendar coverage
 

@@ -10,6 +10,14 @@ coverage, fire causes or burned area. HHE is a demo occupancy index; summed FRP
 is observed power in MW, not energy. Satellite opportunities are approximate
 models without orbital ephemerides. Verdicts are demonstration labels.
 
+**An actual NASA FIRMS case is bundled:** 16,258 records for a declared Central
+Highlands study rectangle, Vietnam (2001–2024). Choose **Explore NASA FIRMS case**
+for the guided manager review, fixed 2013–2020 calibration and 2021–2024 assessment.
+Unknown coverage remains **UNVERIFIABLE**. The power comparison has poor held-out
+agreement; see the [judging evidence and limits](docs/judging/evidence.md).
+[Judging packet](docs/judging/README.md) · [Data/source credits](SOURCES.md) ·
+[AI disclosure](AI-DISCLOSURE.md) · [Apache-2.0 license](LICENSE).
+
 [Methods](docs/SCIENCE.md) · [Inputs](docs/INPUTS.md) · [Exports](docs/EXPORTS.md) ·
 [Receipts](docs/RECEIPTS.md) · [Architecture](docs/ARCHITECTURE.md) ·
 [Schema reference](docs/MAPPING_MANIFESTO.md) · [Judge walkthrough](docs/SUBMISSION.md) ·
@@ -71,6 +79,7 @@ its full executable path. CLI errors exit 2 with a controlled message.
 python run.py --aoi AOI-MEK --year 2026 --month 3 --output logs/mekong.json --receipt logs/receipt.json --package logs/audit.zip
 python verify.py logs/receipt.json
 python run.py --csv app/web/static/samples/generated-firms-demo.csv --output logs/upload.json
+python run.py --case-study central-highlands --output logs/case.json --receipt logs/case-receipt.json --package logs/case-audit.zip
 python run.py --lat 10 --lon 106 --radius-km 25 --year 2026 --month 7 --mode raw --output logs/custom.json
 python run.py --help
 ```
@@ -103,6 +112,7 @@ python judge.py
 python scripts/build_design.py --check
 python scripts/build_schema_docs.py --check
 python scripts/generate_examples.py --check
+python scripts/package_submission.py --output logs/firetrace-submission.zip
 python verify.py output_examples/01_amazon_critical_receipt.json
 ```
 

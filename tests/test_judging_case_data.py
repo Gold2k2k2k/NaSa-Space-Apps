@@ -13,6 +13,18 @@ DATA = ROOT / "app" / "data"
 
 
 class TestJudgingCaseData(unittest.TestCase):
+    def test_committed_judging_results_match_the_verifiable_receipt(self):
+        receipt_path = ROOT / "output_examples" / "central_highlands_receipt.json"
+        self.assertTrue(receipt_path.is_file(), "A reproducible real-case example is missing")
+        from verify import check_receipt
+        receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+        report = json.loads((ROOT / "docs" / "judging" / "results" / "model-evaluation.json").read_text(encoding="utf-8"))
+        brief = json.loads((ROOT / "docs" / "judging" / "results" / "manager-brief.json").read_text(encoding="utf-8"))
+        self.assertEqual(check_receipt(receipt)["status"], "VALID")
+        self.assertEqual(receipt["verdict"], "UNVERIFIABLE")
+        self.assertEqual(report, receipt["sensor_calibration_audit"]["model_evaluation"])
+        self.assertEqual(brief, receipt["manager_brief"])
+
     def test_bundle_matches_declared_sources_and_extent(self):
         path = DATA / "central-highlands.manifest.json"
         self.assertTrue(path.is_file(), "The approved real NASA case is not bundled")
